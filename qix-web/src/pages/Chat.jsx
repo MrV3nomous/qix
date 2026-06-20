@@ -10,6 +10,8 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    const [appHeight, setAppHeight] = useState(window.innerHeight);
+
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
@@ -21,36 +23,42 @@ export default function Chat() {
     };
 
     useEffect(() => {
-        const html = document.documentElement;
-        const body = document.body;
+        const updateViewportHeight = () => {
+            let currentHeight = window.innerHeight;
+            if (window.visualViewport) {
+                currentHeight = window.visualViewport.height;
+                window.scrollTo(0, 0);
+            }
 
-        html.style.height = '100dvh';
-        html.style.overflow = 'hidden';
-        html.style.overscrollBehavior = 'none';
+            setAppHeight(currentHeight);
+            setTimeout(scrollToBottom, 50);
+        };
 
-        body.style.height = '100dvh';
-        body.style.overflow = 'hidden';
-        body.style.position = 'fixed';
-        body.style.width = '100%';
-        body.style.overscrollBehavior = 'none';
+        document.body.style.overflow = 'hidden';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+        document.body.style.height = '100%';
+
+        window.addEventListener('resize', updateViewportHeight);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateViewportHeight);
+            window.visualViewport.addEventListener('scroll', updateViewportHeight);
+        }
+
+        updateViewportHeight();
 
         return () => {
-            html.style.height = '';
-            html.style.overflow = '';
-            html.style.overscrollBehavior = '';
-            body.style.height = '';
-            body.style.overflow = '';
-            body.style.position = '';
-            body.style.width = '';
-            body.style.overscrollBehavior = '';
+            window.removeEventListener('resize', updateViewportHeight);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', updateViewportHeight);
+                window.visualViewport.removeEventListener('scroll', updateViewportHeight);
+            }
+            document.body.style.overflow = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
+            document.body.style.height = '';
         };
     }, []);
-
-    useEffect(() => {
-        const handleResize = () => setTimeout(scrollToBottom, 150);
-        window.addEventListener('resize', handleResize);
-        return () => window.removeEventListener('resize', handleResize);
-    }, [messages]);
 
     useEffect(() => {
         scrollToBottom();
@@ -235,8 +243,10 @@ export default function Chat() {
     };
 
     return (
-        <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30">
-
+        <div
+            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
+            style={{ height: `${appHeight}px` }}
+        >
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -344,7 +354,6 @@ export default function Chat() {
                     <input
                         type="text"
                         value={input}
-                        onFocus={() => setTimeout(scrollToBottom, 150)}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Type an ephemeral message..."
                         disabled={!isConnected}
