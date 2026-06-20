@@ -11,6 +11,7 @@ export default function Chat() {
     const [copied, setCopied] = useState(false);
 
     const [appHeight, setAppHeight] = useState(window.innerHeight);
+    const [viewportTop, setViewportTop] = useState(0);
 
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
@@ -23,40 +24,45 @@ export default function Chat() {
     };
 
     useEffect(() => {
-        const updateViewportHeight = () => {
-            let currentHeight = window.innerHeight;
+        document.documentElement.style.backgroundColor = '#020617';
+        document.body.style.backgroundColor = '#020617';
+        document.body.style.margin = '0';
+        document.body.style.padding = '0';
+        document.body.style.overflow = 'hidden';
+
+        const updateLayout = () => {
             if (window.visualViewport) {
-                currentHeight = window.visualViewport.height;
-                window.scrollTo(0, 0);
+                setAppHeight(window.visualViewport.height);
+
+                setViewportTop(window.visualViewport.offsetTop);
+            } else {
+                setAppHeight(window.innerHeight);
+                setViewportTop(0);
             }
 
-            setAppHeight(currentHeight);
             setTimeout(scrollToBottom, 50);
         };
 
-        document.body.style.overflow = 'hidden';
-        document.body.style.position = 'fixed';
-        document.body.style.width = '100%';
-        document.body.style.height = '100%';
-
-        window.addEventListener('resize', updateViewportHeight);
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', updateViewportHeight);
-            window.visualViewport.addEventListener('scroll', updateViewportHeight);
+            window.visualViewport.addEventListener('resize', updateLayout);
+            window.visualViewport.addEventListener('scroll', updateLayout);
         }
+        window.addEventListener('resize', updateLayout);
+        window.addEventListener('scroll', updateLayout);
 
-        updateViewportHeight();
+        updateLayout();
 
         return () => {
-            window.removeEventListener('resize', updateViewportHeight);
             if (window.visualViewport) {
-                window.visualViewport.removeEventListener('resize', updateViewportHeight);
-                window.visualViewport.removeEventListener('scroll', updateViewportHeight);
+                window.visualViewport.removeEventListener('resize', updateLayout);
+                window.visualViewport.removeEventListener('scroll', updateLayout);
             }
+            window.removeEventListener('resize', updateLayout);
+            window.removeEventListener('scroll', updateLayout);
+
+            document.documentElement.style.backgroundColor = '';
+            document.body.style.backgroundColor = '';
             document.body.style.overflow = '';
-            document.body.style.position = '';
-            document.body.style.width = '';
-            document.body.style.height = '';
         };
     }, []);
 
@@ -244,8 +250,12 @@ export default function Chat() {
 
     return (
         <div
-            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
-            style={{ height: `${appHeight}px` }}
+            className="absolute w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
+            style={{
+                height: `${appHeight}px`,
+                top: `${viewportTop}px`,
+                left: 0
+            }}
         >
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
