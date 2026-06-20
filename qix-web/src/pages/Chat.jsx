@@ -10,43 +10,47 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const [viewportHeight, setViewportHeight] = useState('100dvh');
-
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
 
     const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        if (messagesEndRef.current) {
+            messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+        }
     };
 
     useEffect(() => {
-        const handleViewportChange = () => {
-            if (window.visualViewport) {
-                setViewportHeight(`${window.visualViewport.height}px`);
-                window.scrollTo(0, 0);
-            } else {
-                setViewportHeight(`${window.innerHeight}px`);
-            }
-            setTimeout(scrollToBottom, 50);
-        };
+        const html = document.documentElement;
+        const body = document.body;
 
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', handleViewportChange);
-            window.visualViewport.addEventListener('scroll', handleViewportChange);
-        }
-        window.addEventListener('resize', handleViewportChange);
+        html.style.height = '100dvh';
+        html.style.overflow = 'hidden';
+        html.style.overscrollBehavior = 'none';
 
-        handleViewportChange();
+        body.style.height = '100dvh';
+        body.style.overflow = 'hidden';
+        body.style.position = 'fixed';
+        body.style.width = '100%';
+        body.style.overscrollBehavior = 'none';
 
         return () => {
-            if (window.visualViewport) {
-                window.visualViewport.removeEventListener('resize', handleViewportChange);
-                window.visualViewport.removeEventListener('scroll', handleViewportChange);
-            }
-            window.removeEventListener('resize', handleViewportChange);
+            html.style.height = '';
+            html.style.overflow = '';
+            html.style.overscrollBehavior = '';
+            body.style.height = '';
+            body.style.overflow = '';
+            body.style.position = '';
+            body.style.width = '';
+            body.style.overscrollBehavior = '';
         };
     }, []);
+
+    useEffect(() => {
+        const handleResize = () => setTimeout(scrollToBottom, 150);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, [messages]);
 
     useEffect(() => {
         scrollToBottom();
@@ -180,7 +184,7 @@ export default function Chat() {
             setMessages((prev) => [...prev, { ...newMsg, content: input, isMine: true, isRead: false }]);
             setInput('');
 
-            setTimeout(() => scrollToBottom(), 50);
+            setTimeout(scrollToBottom, 50);
         } catch (err) {
             console.error("Encryption failed", err);
             alert("Failed to encrypt message.");
@@ -231,10 +235,8 @@ export default function Chat() {
     };
 
     return (
-        <div
-            className="fixed top-0 left-0 w-full bg-[#020617] text-slate-200 font-sans flex flex-col overflow-hidden selection:bg-violet-500/30"
-            style={{ height: viewportHeight }}
-        >
+        <div className="absolute top-0 left-0 right-0 bottom-0 flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30">
+
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -301,7 +303,7 @@ export default function Chat() {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth relative z-10">
+            <div className="flex-1 overflow-y-auto overscroll-none p-4 sm:p-6 scroll-smooth relative z-10">
                 <div className="w-full max-w-6xl mx-auto flex flex-col space-y-4 sm:space-y-6 min-h-full">
                     {messages.length === 0 && (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto py-10">
@@ -342,6 +344,7 @@ export default function Chat() {
                     <input
                         type="text"
                         value={input}
+                        onFocus={() => setTimeout(scrollToBottom, 150)}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Type an ephemeral message..."
                         disabled={!isConnected}
