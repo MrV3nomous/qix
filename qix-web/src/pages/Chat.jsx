@@ -10,9 +10,6 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const [appHeight, setAppHeight] = useState(window.innerHeight);
-    const [viewportTop, setViewportTop] = useState(0);
-
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
@@ -22,49 +19,6 @@ export default function Chat() {
             messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
         }
     };
-
-    useEffect(() => {
-        document.documentElement.style.backgroundColor = '#020617';
-        document.body.style.backgroundColor = '#020617';
-        document.body.style.margin = '0';
-        document.body.style.padding = '0';
-        document.body.style.overflow = 'hidden';
-
-        const updateLayout = () => {
-            if (window.visualViewport) {
-                setAppHeight(window.visualViewport.height);
-
-                setViewportTop(window.visualViewport.offsetTop);
-            } else {
-                setAppHeight(window.innerHeight);
-                setViewportTop(0);
-            }
-
-            setTimeout(scrollToBottom, 50);
-        };
-
-        if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', updateLayout);
-            window.visualViewport.addEventListener('scroll', updateLayout);
-        }
-        window.addEventListener('resize', updateLayout);
-        window.addEventListener('scroll', updateLayout);
-
-        updateLayout();
-
-        return () => {
-            if (window.visualViewport) {
-                window.visualViewport.removeEventListener('resize', updateLayout);
-                window.visualViewport.removeEventListener('scroll', updateLayout);
-            }
-            window.removeEventListener('resize', updateLayout);
-            window.removeEventListener('scroll', updateLayout);
-
-            document.documentElement.style.backgroundColor = '';
-            document.body.style.backgroundColor = '';
-            document.body.style.overflow = '';
-        };
-    }, []);
 
     useEffect(() => {
         scrollToBottom();
@@ -197,7 +151,7 @@ export default function Chat() {
             ws.current.send(JSON.stringify(newMsg));
             setMessages((prev) => [...prev, { ...newMsg, content: input, isMine: true, isRead: false }]);
             setInput('');
-
+            
             setTimeout(scrollToBottom, 50);
         } catch (err) {
             console.error("Encryption failed", err);
@@ -249,14 +203,8 @@ export default function Chat() {
     };
 
     return (
-        <div
-            className="absolute w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
-            style={{
-                height: `${appHeight}px`,
-                top: `${viewportTop}px`,
-                left: 0
-            }}
-        >
+        <div className="absolute inset-0 flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden selection:bg-violet-500/30">
+            
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -323,7 +271,7 @@ export default function Chat() {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto overscroll-none p-4 sm:p-6 scroll-smooth relative z-10">
+            <div className="flex-1 overflow-y-auto scroll-smooth relative z-10 p-4 sm:p-6 scrollbar-hide">
                 <div className="w-full max-w-6xl mx-auto flex flex-col space-y-4 sm:space-y-6 min-h-full">
                     {messages.length === 0 && (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto py-10">
@@ -359,7 +307,7 @@ export default function Chat() {
                 </div>
             </div>
 
-            <form onSubmit={sendMessage} className="shrink-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md relative z-20">
+            <form onSubmit={sendMessage} className="shrink-0 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md relative z-20">
                 <div className="flex gap-2 sm:gap-3 w-full max-w-6xl mx-auto">
                     <input
                         type="text"
