@@ -10,21 +10,9 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
-
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
-
-    useEffect(() => {
-        if (!window.visualViewport) return;
-        const handleResize = () => {
-            setViewportHeight(window.visualViewport.height);
-        };
-        window.visualViewport.addEventListener('resize', handleResize);
-        handleResize();
-        return () => window.visualViewport.removeEventListener('resize', handleResize);
-    }, []);
 
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
@@ -48,16 +36,9 @@ export default function Chat() {
 
         let isMounted = true;
         let socket = null;
+        let reconnectTimer = null;
 
-        const initializeChat = async () => {
-            try {
-                cryptoKeyRef.current = await importKey(rawKey);
-            } catch (err) {
-                console.error("Failed to load encryption key", err);
-                navigate('/');
-                return;
-            }
-
+        const syncHistory = async () => {
             try {
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/messages`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
@@ -65,7 +46,6 @@ export default function Chat() {
 
                 if (response.ok) {
                     const encryptedHistory = await response.json();
-
                     const decryptedHistory = [];
                     for (const msg of encryptedHistory) {
                         try {
@@ -79,15 +59,24 @@ export default function Chat() {
                 } else if (response.status === 401) {
                     sessionStorage.clear();
                     navigate('/');
-                    return;
+                    return false;
                 }
+                return true;
             } catch (error) {
                 console.error("Error Fetching History:", error);
+                return false;
             }
+        };
 
+        const connectWebSocket = () => {
             if (!isMounted) return;
 
-            socket = new WebSocket(`${import.meta.env.VITE_WS_URL}?token=${authToken}`);
+            let wsUrl = import.meta.env.VITE_WS_URL;
+            if (wsUrl.startsWith('http')) {
+                wsUrl = wsUrl.replace(/^http/, 'ws');
+            }
+
+            socket = new WebSocket(`${wsUrl}?token=${authToken}`);
 
             socket.onopen = () => {
                 if (isMounted) setIsConnected(true);
@@ -119,10 +108,12 @@ export default function Chat() {
                             return [...prev, { ...incomingMsg, content: plainText, isMine: false }];
                         });
 
-                        socket.send(JSON.stringify({
-                            type: 'ACK',
-                            message_id: incomingMsg.message_id
-                        }));
+                        if (socket && socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({
+                                type: 'ACK',
+                                message_id: incomingMsg.message_id
+                            }));
+                        }
                     } catch (err) {
                         console.error("Failed to decrypt incoming message", err);
                     }
@@ -130,24 +121,66 @@ export default function Chat() {
             };
 
             socket.onclose = () => {
-                console.log('Disconnected from Qix Router');
-                if (isMounted) setIsConnected(false);
+                console.log('Connection lost. Reconnecting...');
+                if (isMounted) {
+                    setIsConnected(false);
+                    reconnectTimer = setTimeout(connectWebSocket, 3000);
+                }
+            };
+
+            socket.onerror = (err) => {
+                console.error('WebSocket Error', err);
+                socket.close();
             };
 
             ws.current = socket;
         };
 
-        initializeChat();
+        const setup = async () => {
+            try {
+                cryptoKeyRef.current = await importKey(rawKey);
+                const success = await syncHistory();
+                if (success !== false) connectWebSocket();
+            } catch (err) {
+                console.error("Initialization failed", err);
+                navigate('/');
+            }
+        };
+
+        setup();
+
+        
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible' && isMounted) {
+                syncHistory();
+
+                if (socket && socket.readyState === WebSocket.CLOSED) {
+                    clearTimeout(reconnectTimer);
+                    connectWebSocket();
+                }
+            }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
 
         return () => {
             isMounted = false;
-            if (socket) socket.close();
+            clearTimeout(reconnectTimer);
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+            if (socket) {
+                socket.onclose = null;
+                socket.close();
+            }
         };
     }, [navigate]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
         if (!input.trim() || !ws.current || !cryptoKeyRef.current) return;
+
+        if (ws.current.readyState !== WebSocket.OPEN) {
+            alert("Connection paused. Reconnecting to vault...");
+            return;
+        }
 
         try {
             const { ciphertext, iv } = await encryptMessage(input, cryptoKeyRef.current);
@@ -215,10 +248,8 @@ export default function Chat() {
     };
 
     return (
-        <div
-            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
-            style={{ height: `${viewportHeight}px` }}
-        >
+        <div className="absolute inset-0 flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden selection:bg-violet-500/30">
+
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
