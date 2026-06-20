@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"qix-server/internal/auth"
@@ -112,9 +113,14 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	frontendURL := os.Getenv("FRONTEND_URL")
+	if frontendURL == "" {
+		frontendURL = "http://localhost:5173"
+	}
+
 	response := map[string]string{
 		"room_id":     roomID,
-		"invite_link": "http://localhost:5173/join?token=" + guestInviteToken,
+		"invite_link": frontendURL + "/join?token=" + guestInviteToken,
 		"session_id":  creatorSessionID,
 	}
 
