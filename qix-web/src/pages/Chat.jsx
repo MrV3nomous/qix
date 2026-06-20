@@ -20,6 +20,8 @@ export default function Chat() {
 
     useEffect(() => {
         scrollToBottom();
+        window.addEventListener('resize', scrollToBottom);
+        return () => window.removeEventListener('resize', scrollToBottom);
     }, [messages]);
 
     useEffect(() => {
@@ -199,9 +201,9 @@ export default function Chat() {
     };
 
     return (
-        <div className="h-[100dvh] w-full bg-[#020617] text-slate-200 font-sans relative flex flex-col overflow-hidden selection:bg-violet-500/30">
+        <div className="fixed inset-0 w-full bg-[#020617] text-slate-200 font-sans flex flex-col overflow-hidden selection:bg-violet-500/30">
 
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
+            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
                 <div className="absolute top-[20%] right-[20%] w-[40vw] h-[40vw] bg-blue-600/15 rounded-full mix-blend-screen filter blur-[100px]"></div>
@@ -210,19 +212,21 @@ export default function Chat() {
 
             <div className="flex-1 w-full flex flex-col bg-white/[0.02] backdrop-blur-3xl overflow-hidden relative z-10">
 
-                <div className="bg-black/20 border-b border-white/5 px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md shrink-0">
-                    <div className="flex items-center gap-3 sm:gap-4">
-                        <Logo className="w-8 h-8 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)]" />
-                        <div>
-                            <h2 className="text-base sm:text-lg font-semibold tracking-wide text-white leading-tight">Secure Vault</h2>
+                <div className="bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md shrink-0">
+                    <div className="flex items-center gap-2 sm:gap-4">
+                        <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0" />
+                        <div className="min-w-0">
+                            <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">Secure Vault</h2>
                             <div className="flex items-center text-[10px] sm:text-xs mt-0.5">
-                                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>
-                                <span className="text-slate-400 font-light truncate max-w-[120px] sm:max-w-none">{isConnected ? 'E2E Connection Active' : 'Connecting to Router...'}</span>
+                                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm shrink-0 ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>
+                                <span className="text-slate-400 font-light truncate">
+                                    {isConnected ? 'E2E Active' : 'Connecting...'}
+                                </span>
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-1.5 sm:gap-2">
+                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
                         <button
                             onClick={copyToClipboard}
                             className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${copied
@@ -232,11 +236,11 @@ export default function Chat() {
                             title="Copy Invite Link"
                         >
                             {copied ? (
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                                 </svg>
                             ) : (
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                 </svg>
                             )}
@@ -248,7 +252,7 @@ export default function Chat() {
                                 className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center"
                                 title="Share Invite Link"
                             >
-                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                                 </svg>
                             </button>
@@ -256,12 +260,13 @@ export default function Chat() {
 
                         <button
                             onClick={leaveRoom}
-                            className="group flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 px-3 py-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap"
+                            className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap"
+                            title="End Session"
                         >
-                            <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4 transform group-hover:scale-110 transition-transform hidden sm:block" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4 transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
-                            End <span className="hidden sm:inline">& Shred</span>
+                            <span className="hidden sm:inline">End & Shred</span>
                         </button>
                     </div>
                 </div>
@@ -282,9 +287,8 @@ export default function Chat() {
                                     ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white rounded-br-sm shadow-[0_4px_20px_-5px_rgba(124,58,237,0.4)]'
                                     : 'bg-white/10 border border-white/5 text-slate-200 rounded-bl-sm backdrop-blur-md'
                                     }`}>
-                                    <span>{msg.content}</span>
+                                    <span className="break-words">{msg.content}</span>
 
-                                    {/* Timestamp & Read Receipt */}
                                     <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-blue-200' : 'text-slate-400'}`}>
                                         <span>
                                             {msg.timestamp
@@ -304,7 +308,7 @@ export default function Chat() {
                     </div>
                 </div>
 
-                <form onSubmit={sendMessage} className="p-3 sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md z-20 shrink-0">
+                <form onSubmit={sendMessage} className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md z-20 shrink-0">
                     <div className="flex gap-2 sm:gap-3 w-full max-w-6xl mx-auto">
                         <input
                             type="text"
@@ -312,12 +316,12 @@ export default function Chat() {
                             onChange={(e) => setInput(e.target.value)}
                             placeholder="Type an ephemeral message..."
                             disabled={!isConnected}
-                            className="flex-1 bg-black/40 text-slate-200 placeholder:text-slate-500 text-[16px] px-4 sm:px-6 py-3.5 sm:py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 focus:bg-black/60 transition-all duration-300 disabled:opacity-50 shadow-inner"
+                            className="flex-1 bg-black/40 text-slate-200 placeholder:text-slate-500 text-[16px] px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 focus:bg-black/60 transition-all duration-300 disabled:opacity-50 shadow-inner"
                         />
                         <button
                             type="submit"
                             disabled={!isConnected || !input.trim()}
-                            className="bg-white/10 hover:bg-white/20 text-white font-medium px-5 sm:px-8 py-3.5 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 hover:border-white/20 disabled:opacity-50 shadow-sm flex justify-center items-center gap-2 shrink-0"
+                            className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 sm:px-8 py-3 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 hover:border-white/20 disabled:opacity-50 shadow-sm flex justify-center items-center gap-2 shrink-0"
                         >
                             <span className="hidden sm:inline">Send</span>
                             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
