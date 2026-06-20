@@ -10,9 +10,23 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
+
+    const intentionalClose = useRef(false);
+
+    useEffect(() => {
+        if (!window.visualViewport) return;
+        const handleResize = () => {
+            setViewportHeight(window.visualViewport.height);
+        };
+        window.visualViewport.addEventListener('resize', handleResize);
+        handleResize();
+        return () => window.visualViewport.removeEventListener('resize', handleResize);
+    }, []);
 
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
@@ -35,10 +49,8 @@ export default function Chat() {
         }
 
         let isMounted = true;
-        let socket = null;
-        let reconnectTimer = null;
 
-        const syncHistory = async () => {
+        const fetchHistory = async () => {
             try {
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/messages`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
@@ -59,27 +71,27 @@ export default function Chat() {
                 } else if (response.status === 401) {
                     sessionStorage.clear();
                     navigate('/');
-                    return false;
                 }
-                return true;
             } catch (error) {
                 console.error("Error Fetching History:", error);
-                return false;
             }
         };
 
         const connectWebSocket = () => {
-            if (!isMounted) return;
+            if (intentionalClose.current) return;
 
-            let wsUrl = import.meta.env.VITE_WS_URL;
-            if (wsUrl.startsWith('http')) {
-                wsUrl = wsUrl.replace(/^http/, 'ws');
+            if (ws.current) {
+                ws.current.close();
             }
 
-            socket = new WebSocket(`${wsUrl}?token=${authToken}`);
+            const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}?token=${authToken}`);
 
             socket.onopen = () => {
-                if (isMounted) setIsConnected(true);
+                console.log('Connected to Qix Router');
+                if (isMounted) {
+                    setIsConnected(true);
+                    fetchHistory();
+                }
             };
 
             socket.onmessage = async (event) => {
@@ -108,12 +120,10 @@ export default function Chat() {
                             return [...prev, { ...incomingMsg, content: plainText, isMine: false }];
                         });
 
-                        if (socket && socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({
-                                type: 'ACK',
-                                message_id: incomingMsg.message_id
-                            }));
-                        }
+                        socket.send(JSON.stringify({
+                            type: 'ACK',
+                            message_id: incomingMsg.message_id
+                        }));
                     } catch (err) {
                         console.error("Failed to decrypt incoming message", err);
                     }
@@ -121,55 +131,53 @@ export default function Chat() {
             };
 
             socket.onclose = () => {
-                console.log('Connection lost. Reconnecting...');
+                console.log('Disconnected from Qix Router. Attempting to reconnect...');
                 if (isMounted) {
                     setIsConnected(false);
-                    reconnectTimer = setTimeout(connectWebSocket, 3000);
+                    if (!intentionalClose.current) {
+                        setTimeout(connectWebSocket, 2000);
+                    }
                 }
             };
 
-            socket.onerror = (err) => {
-                console.error('WebSocket Error', err);
+            socket.onerror = (error) => {
+                console.error("WebSocket encountered an error", error);
                 socket.close();
             };
 
             ws.current = socket;
         };
 
-        const setup = async () => {
+        const initializeChat = async () => {
             try {
                 cryptoKeyRef.current = await importKey(rawKey);
-                const success = await syncHistory();
-                if (success !== false) connectWebSocket();
             } catch (err) {
-                console.error("Initialization failed", err);
+                console.error("Failed to load encryption key", err);
                 navigate('/');
+                return;
+            }
+
+            await fetchHistory();
+            if (isMounted) {
+                connectWebSocket();
             }
         };
 
-        setup();
+        initializeChat();
 
-        
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && isMounted) {
-                syncHistory();
-
-                if (socket && socket.readyState === WebSocket.CLOSED) {
-                    clearTimeout(reconnectTimer);
-                    connectWebSocket();
-                }
+            if (document.visibilityState === 'visible' && !isConnected) {
+                console.log("App foregrounded. Reconnecting...");
+                connectWebSocket();
             }
         };
-        document.addEventListener('visibilitychange', handleVisibilityChange);
+        document.addEventListener("visibilitychange", handleVisibilityChange);
 
         return () => {
             isMounted = false;
-            clearTimeout(reconnectTimer);
-            document.removeEventListener('visibilitychange', handleVisibilityChange);
-            if (socket) {
-                socket.onclose = null;
-                socket.close();
-            }
+            intentionalClose.current = true;
+            if (ws.current) ws.current.close();
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
     }, [navigate]);
 
@@ -178,7 +186,7 @@ export default function Chat() {
         if (!input.trim() || !ws.current || !cryptoKeyRef.current) return;
 
         if (ws.current.readyState !== WebSocket.OPEN) {
-            alert("Connection paused. Reconnecting to vault...");
+            alert("Connection lost. Reconnecting to secure router...");
             return;
         }
 
@@ -205,6 +213,7 @@ export default function Chat() {
     };
 
     const leaveRoom = async () => {
+        intentionalClose.current = true;
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
             ws.current.send(JSON.stringify({ type: 'TERMINATE' }));
         } else {
@@ -248,8 +257,10 @@ export default function Chat() {
     };
 
     return (
-        <div className="absolute inset-0 flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden selection:bg-violet-500/30">
-
+        <div
+            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
+            style={{ height: `${viewportHeight}px` }}
+        >
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
