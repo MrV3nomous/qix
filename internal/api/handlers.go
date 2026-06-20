@@ -109,8 +109,8 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		Path:     "/",
 		MaxAge:   86400,
 		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
+		Secure:   true,
+		SameSite: http.SameSiteNoneMode,
 	})
 
 	frontendURL := os.Getenv("FRONTEND_URL")
