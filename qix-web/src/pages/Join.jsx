@@ -26,7 +26,6 @@ export default function Join() {
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/join`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
                     body: JSON.stringify({ invite_token: inviteToken })
                 });
 
@@ -42,6 +41,8 @@ export default function Join() {
                 sessionStorage.setItem('qix_invite_link', fullInviteLink);
                 sessionStorage.setItem('qix_e2e_key', encryptionKey);
                 sessionStorage.setItem('qix_session_id', data.session_id);
+                sessionStorage.setItem('qix_auth_token', data.auth_token);
+
                 navigate('/chat');
             } catch (error) {
                 console.error(error);

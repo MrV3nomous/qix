@@ -25,8 +25,9 @@ export default function Chat() {
     useEffect(() => {
         const roomId = sessionStorage.getItem('qix_room_id');
         const rawKey = sessionStorage.getItem('qix_e2e_key');
+        const authToken = sessionStorage.getItem('qix_auth_token');
 
-        if (!roomId || !rawKey) {
+        if (!roomId || !rawKey || !authToken) {
             navigate('/');
             return;
         }
@@ -45,7 +46,7 @@ export default function Chat() {
 
             try {
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/messages`, {
-                    credentials: 'include'
+                    headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
                 if (response.ok) {
@@ -72,7 +73,7 @@ export default function Chat() {
 
             if (!isMounted) return;
 
-            socket = new WebSocket(`${import.meta.env.VITE_WS_URL}`);
+            socket = new WebSocket(`${import.meta.env.VITE_WS_URL}?token=${authToken}`);
 
             socket.onopen = () => {
                 if (isMounted) setIsConnected(true);
@@ -142,7 +143,7 @@ export default function Chat() {
                 content: ciphertext,
                 iv: iv,
                 message_id: 'msg_' + Math.random().toString(36).substr(2, 9),
-                timestamp: new Date().toISOString() // Capture exact send time
+                timestamp: new Date().toISOString()
             };
 
             ws.current.send(JSON.stringify(newMsg));
@@ -159,9 +160,10 @@ export default function Chat() {
             ws.current.send(JSON.stringify({ type: 'TERMINATE' }));
         } else {
             try {
-                await fetch('http://localhost:8080/terminate', {
+                const token = sessionStorage.getItem('qix_auth_token');
+                await fetch(`${import.meta.env.VITE_API_URL}/terminate`, {
                     method: 'POST',
-                    credentials: 'include'
+                    headers: { 'Authorization': `Bearer ${token}` }
                 });
             } catch (error) {
                 console.error("Failed to send terminate signal", error);

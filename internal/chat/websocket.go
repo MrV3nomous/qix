@@ -49,15 +49,16 @@ type DBMessage struct {
 }
 
 func ServeWS(w http.ResponseWriter, r *http.Request) {
-	cookie, err := r.Cookie("qix_token")
-	if err != nil {
-		http.Error(w, "Missing authentication cookie", http.StatusUnauthorized)
+	tokenStr := r.URL.Query().Get("token")
+	if tokenStr == "" {
+		log.Println("WS Error: No token provided in URL")
+		http.Error(w, "Missing token", http.StatusUnauthorized)
 		return
 	}
-	tokenStr := cookie.Value
 
 	claims, err := auth.ValidateToken(tokenStr)
 	if err != nil {
+		log.Printf("WS Error: Invalid token: %v", err)
 		http.Error(w, "Invalid token", http.StatusUnauthorized)
 		return
 	}

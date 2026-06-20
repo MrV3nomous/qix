@@ -13,8 +13,7 @@ export default function Home() {
         setIsLoading(true);
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/room`, {
-                method: 'POST',
-                credentials: 'include'
+                method: 'POST'
             });
 
             if (!response.ok) throw new Error('Failed to create room');
@@ -29,6 +28,8 @@ export default function Home() {
             sessionStorage.setItem('qix_invite_link', fullInviteLink);
             sessionStorage.setItem('qix_e2e_key', exportedKey);
             sessionStorage.setItem('qix_session_id', data.session_id);
+            sessionStorage.setItem('qix_auth_token', data.auth_token);
+
             setInviteData({ ...data, invite_link: fullInviteLink });
         } catch (error) {
             console.error(error);
