@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { generateKey, exportKey } from '../utils/crypto';
@@ -7,11 +7,21 @@ export default function Home() {
     const [isLoading, setIsLoading] = useState(false);
     const [inviteData, setInviteData] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [hasActiveSession, setHasActiveSession] = useState(false);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (localStorage.getItem('qix_room_id')) {
+            setHasActiveSession(true);
+        }
+    }, []);
 
     const createRoom = async () => {
         setIsLoading(true);
         try {
+            localStorage.clear();
+            setHasActiveSession(false);
+
             const response = await fetch(`${import.meta.env.VITE_API_URL}/room`, {
                 method: 'POST'
             });
@@ -24,11 +34,11 @@ export default function Home() {
 
             const fullInviteLink = `${data.invite_link}#key=${exportedKey}`;
 
-            sessionStorage.setItem('qix_room_id', data.room_id);
-            sessionStorage.setItem('qix_invite_link', fullInviteLink);
-            sessionStorage.setItem('qix_e2e_key', exportedKey);
-            sessionStorage.setItem('qix_session_id', data.session_id);
-            sessionStorage.setItem('qix_auth_token', data.auth_token);
+            localStorage.setItem('qix_room_id', data.room_id);
+            localStorage.setItem('qix_invite_link', fullInviteLink);
+            localStorage.setItem('qix_e2e_key', exportedKey);
+            localStorage.setItem('qix_session_id', data.session_id);
+            localStorage.setItem('qix_auth_token', data.auth_token);
 
             setInviteData({ ...data, invite_link: fullInviteLink });
         } catch (error) {
@@ -57,6 +67,15 @@ export default function Home() {
                 console.error('Share failed or was cancelled:', err);
             }
         }
+    };
+
+    const handleRecovery = () => {
+        navigate('/chat');
+    };
+
+    const handleDestroyLocal = () => {
+        localStorage.clear();
+        setHasActiveSession(false);
     };
 
     return (
@@ -99,7 +118,26 @@ export default function Home() {
 
                         <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-0 group-hover:opacity-100 rounded-[2.5rem] transition-opacity duration-500 pointer-events-none"></div>
 
-                        {!inviteData ? (
+                        {hasActiveSession && !inviteData ? (
+                            <div className="flex flex-col items-center space-y-4 relative z-10 animate-fade-in-up">
+                                <div className="bg-emerald-500/10 text-emerald-300 p-4 w-full rounded-2xl border border-emerald-500/20 mb-2">
+                                    <h3 className="font-semibold mb-1">Active Session Detected</h3>
+                                    <p className="text-sm font-light">It looks like you already have a vault open. Would you like to return to it?</p>
+                                </div>
+                                <button
+                                    onClick={handleRecovery}
+                                    className="w-full py-4 px-8 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-2xl shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+                                >
+                                    Return to Secure Vault →
+                                </button>
+                                <button
+                                    onClick={handleDestroyLocal}
+                                    className="w-full py-3 px-8 bg-transparent text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-900/50 rounded-2xl text-sm font-medium transition-all duration-300"
+                                >
+                                    Destroy Session & Start Fresh
+                                </button>
+                            </div>
+                        ) : !inviteData ? (
                             <div className="flex flex-col items-center space-y-6 relative z-10">
                                 <button
                                     onClick={createRoom}

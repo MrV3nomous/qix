@@ -23,13 +23,17 @@ export default function Join() {
 
         const joinRoom = async () => {
             try {
+                localStorage.clear();
+
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/join`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ invite_token: inviteToken })
                 });
 
-                if (!response.ok) {
+                if (response.status === 403) {
+                    throw new Error('This secure link has already been used by someone else.');
+                } else if (!response.ok) {
                     throw new Error('Invite expired or invalid');
                 }
 
@@ -37,16 +41,16 @@ export default function Join() {
 
                 const fullInviteLink = `${window.location.origin}/join?token=${inviteToken}#key=${encryptionKey}`;
 
-                sessionStorage.setItem('qix_room_id', data.room_id);
-                sessionStorage.setItem('qix_invite_link', fullInviteLink);
-                sessionStorage.setItem('qix_e2e_key', encryptionKey);
-                sessionStorage.setItem('qix_session_id', data.session_id);
-                sessionStorage.setItem('qix_auth_token', data.auth_token);
+                localStorage.setItem('qix_room_id', data.room_id);
+                localStorage.setItem('qix_invite_link', fullInviteLink);
+                localStorage.setItem('qix_e2e_key', encryptionKey);
+                localStorage.setItem('qix_session_id', data.session_id);
+                localStorage.setItem('qix_auth_token', data.auth_token);
 
                 navigate('/chat');
             } catch (error) {
                 console.error(error);
-                setStatus('This room has been destroyed or the link has expired.');
+                setStatus(error.message || 'This room has been destroyed or the link has expired.');
                 setHasError(true);
             }
         };

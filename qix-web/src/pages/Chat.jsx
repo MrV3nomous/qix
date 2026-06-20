@@ -17,6 +17,7 @@ export default function Chat() {
     const cryptoKeyRef = useRef(null);
 
     const intentionalClose = useRef(false);
+    const retryCount = useRef(0);
 
     useEffect(() => {
         if (!window.visualViewport) return;
@@ -39,9 +40,9 @@ export default function Chat() {
     }, [messages]);
 
     useEffect(() => {
-        const roomId = sessionStorage.getItem('qix_room_id');
-        const rawKey = sessionStorage.getItem('qix_e2e_key');
-        const authToken = sessionStorage.getItem('qix_auth_token');
+        const roomId = localStorage.getItem('qix_room_id');
+        const rawKey = localStorage.getItem('qix_e2e_key');
+        const authToken = localStorage.getItem('qix_auth_token');
 
         if (!roomId || !rawKey || !authToken) {
             navigate('/');
@@ -69,7 +70,7 @@ export default function Chat() {
                     }
                     if (isMounted) setMessages(decryptedHistory);
                 } else if (response.status === 401) {
-                    sessionStorage.clear();
+                    localStorage.clear();
                     navigate('/');
                 }
             } catch (error) {
@@ -78,7 +79,7 @@ export default function Chat() {
         };
 
         const connectWebSocket = () => {
-            if (intentionalClose.current) return;
+            if (intentionalClose.current || !isMounted) return;
 
             if (ws.current) {
                 ws.current.close();
@@ -87,9 +88,9 @@ export default function Chat() {
             const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}?token=${authToken}`);
 
             socket.onopen = () => {
-                console.log('Connected to Qix Router');
                 if (isMounted) {
                     setIsConnected(true);
+                    retryCount.current = 0;
                     fetchHistory();
                 }
             };
@@ -99,7 +100,7 @@ export default function Chat() {
 
                 if (incomingMsg.type === 'TERMINATE') {
                     alert("The other user has ended the secure session. All data has been shredded.");
-                    sessionStorage.clear();
+                    localStorage.clear();
                     navigate('/');
                     return;
                 }
@@ -131,17 +132,23 @@ export default function Chat() {
             };
 
             socket.onclose = () => {
-                console.log('Disconnected from Qix Router. Attempting to reconnect...');
                 if (isMounted) {
                     setIsConnected(false);
                     if (!intentionalClose.current) {
-                        setTimeout(connectWebSocket, 2000);
+                        if (retryCount.current < 5) {
+                            retryCount.current++;
+                            console.log(`Socket closed. Reconnecting... (Attempt ${retryCount.current})`);
+                            setTimeout(connectWebSocket, 1500 * retryCount.current);
+                        } else {
+                            alert("Connection permanently lost. The room may have expired.");
+                            localStorage.clear();
+                            navigate('/');
+                        }
                     }
                 }
             };
 
-            socket.onerror = (error) => {
-                console.error("WebSocket encountered an error", error);
+            socket.onerror = () => {
                 socket.close();
             };
 
@@ -158,17 +165,17 @@ export default function Chat() {
             }
 
             await fetchHistory();
-            if (isMounted) {
-                connectWebSocket();
-            }
+            if (isMounted) connectWebSocket();
         };
 
         initializeChat();
 
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && !isConnected) {
-                console.log("App foregrounded. Reconnecting...");
-                connectWebSocket();
+            if (document.visibilityState === 'visible' && !isConnected && !intentionalClose.current) {
+                if (!ws.current || ws.current.readyState === WebSocket.CLOSED) {
+                    retryCount.current = 0;
+                    connectWebSocket();
+                }
             }
         };
         document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -186,7 +193,7 @@ export default function Chat() {
         if (!input.trim() || !ws.current || !cryptoKeyRef.current) return;
 
         if (ws.current.readyState !== WebSocket.OPEN) {
-            alert("Connection lost. Reconnecting to secure router...");
+            alert("Reconnecting to the secure router. Please wait a moment.");
             return;
         }
 
@@ -218,7 +225,7 @@ export default function Chat() {
             ws.current.send(JSON.stringify({ type: 'TERMINATE' }));
         } else {
             try {
-                const token = sessionStorage.getItem('qix_auth_token');
+                const token = localStorage.getItem('qix_auth_token');
                 await fetch(`${import.meta.env.VITE_API_URL}/terminate`, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -228,12 +235,12 @@ export default function Chat() {
             }
         }
 
-        sessionStorage.clear();
+        localStorage.clear();
         navigate('/');
     };
 
     const getInviteLink = () => {
-        return sessionStorage.getItem('qix_invite_link');
+        return localStorage.getItem('qix_invite_link');
     };
 
     const copyToClipboard = () => {
