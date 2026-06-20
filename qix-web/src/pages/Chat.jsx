@@ -10,9 +10,21 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
+
+    useEffect(() => {
+        if (!window.visualViewport) return;
+        const handleResize = () => {
+            setViewportHeight(window.visualViewport.height);
+        };
+        window.visualViewport.addEventListener('resize', handleResize);
+        handleResize();
+        return () => window.visualViewport.removeEventListener('resize', handleResize);
+    }, []);
 
     const scrollToBottom = () => {
         if (messagesEndRef.current) {
@@ -151,7 +163,7 @@ export default function Chat() {
             ws.current.send(JSON.stringify(newMsg));
             setMessages((prev) => [...prev, { ...newMsg, content: input, isMine: true, isRead: false }]);
             setInput('');
-            
+
             setTimeout(scrollToBottom, 50);
         } catch (err) {
             console.error("Encryption failed", err);
@@ -203,7 +215,10 @@ export default function Chat() {
     };
 
     return (
-        <div className="fixed inset-0 w-full h-[100dvh] flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30">            
+        <div
+            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
+            style={{ height: `${viewportHeight}px` }}
+        >
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -211,7 +226,8 @@ export default function Chat() {
                 <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
             </div>
 
-            <div className="shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative">                <div className="flex items-center gap-2 sm:gap-4">
+            <div className="shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative">
+                <div className="flex items-center gap-2 sm:gap-4">
                     <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0" />
                     <div className="min-w-0">
                         <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">Secure Vault</h2>
