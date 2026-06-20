@@ -20,6 +20,19 @@ export default function Chat() {
 
     useEffect(() => {
         scrollToBottom();
+    }, [messages]);
+
+    useEffect(() => {
+        document.body.style.overflow = 'hidden';
+        document.body.style.height = '100dvh';
+
+        return () => {
+            document.body.style.overflow = 'unset';
+            document.body.style.height = 'unset';
+        };
+    }, []);
+
+    useEffect(() => {
         window.addEventListener('resize', scrollToBottom);
         return () => window.removeEventListener('resize', scrollToBottom);
     }, [messages]);
@@ -201,136 +214,132 @@ export default function Chat() {
     };
 
     return (
-        <div className="fixed inset-0 w-full bg-[#020617] text-slate-200 font-sans flex flex-col overflow-hidden selection:bg-violet-500/30">
+        <div className="h-[100dvh] w-full flex flex-col bg-[#020617] text-slate-200 font-sans relative overflow-hidden selection:bg-violet-500/30">
 
-            <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
                 <div className="absolute top-[20%] right-[20%] w-[40vw] h-[40vw] bg-blue-600/15 rounded-full mix-blend-screen filter blur-[100px]"></div>
                 <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
             </div>
 
-            <div className="flex-1 w-full flex flex-col bg-white/[0.02] backdrop-blur-3xl overflow-hidden relative z-10">
-
-                <div className="bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md shrink-0">
-                    <div className="flex items-center gap-2 sm:gap-4">
-                        <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0" />
-                        <div className="min-w-0">
-                            <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">Secure Vault</h2>
-                            <div className="flex items-center text-[10px] sm:text-xs mt-0.5">
-                                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm shrink-0 ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>
-                                <span className="text-slate-400 font-light truncate">
-                                    {isConnected ? 'E2E Active' : 'Connecting...'}
-                                </span>
-                            </div>
+            <div className="shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md">
+                <div className="flex items-center gap-2 sm:gap-4">
+                    <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0" />
+                    <div className="min-w-0">
+                        <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">Secure Vault</h2>
+                        <div className="flex items-center text-[10px] sm:text-xs mt-0.5">
+                            <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm shrink-0 ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>
+                            <span className="text-slate-400 font-light truncate">
+                                {isConnected ? 'E2E Active' : 'Connecting...'}
+                            </span>
                         </div>
                     </div>
-
-                    <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                        <button
-                            onClick={copyToClipboard}
-                            className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${copied
-                                ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                                : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
-                                }`}
-                            title="Copy Invite Link"
-                        >
-                            {copied ? (
-                                <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                                </svg>
-                            ) : (
-                                <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                                </svg>
-                            )}
-                        </button>
-
-                        {navigator.share && (
-                            <button
-                                onClick={shareLink}
-                                className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center"
-                                title="Share Invite Link"
-                            >
-                                <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                                </svg>
-                            </button>
-                        )}
-
-                        <button
-                            onClick={leaveRoom}
-                            className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap"
-                            title="End Session"
-                        >
-                            <svg className="w-4 h-4 sm:w-4 sm:h-4 transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                            <span className="hidden sm:inline">End & Shred</span>
-                        </button>
-                    </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
-
-                    <div className="w-full max-w-6xl mx-auto flex flex-col space-y-4 sm:space-y-6 min-h-full">
-                        {messages.length === 0 && (
-                            <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto">
-                                <Logo className="w-12 h-12 sm:w-16 sm:h-16 opacity-20 grayscale" />
-                                <p className="text-sm sm:text-base text-center px-4">This room is secured. Awaiting transmission.</p>
-                            </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button
+                        onClick={copyToClipboard}
+                        className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${copied
+                            ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
+                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
+                            }`}
+                        title="Copy Invite Link"
+                    >
+                        {copied ? (
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                        ) : (
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
                         )}
+                    </button>
 
-                        {messages.map((msg, idx) => (
-                            <div key={idx} className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                                <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-sm relative group flex flex-col ${msg.isMine
-                                    ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white rounded-br-sm shadow-[0_4px_20px_-5px_rgba(124,58,237,0.4)]'
-                                    : 'bg-white/10 border border-white/5 text-slate-200 rounded-bl-sm backdrop-blur-md'
-                                    }`}>
-                                    <span className="break-words">{msg.content}</span>
+                    {navigator.share && (
+                        <button
+                            onClick={shareLink}
+                            className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center"
+                            title="Share Invite Link"
+                        >
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                        </button>
+                    )}
 
-                                    <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-blue-200' : 'text-slate-400'}`}>
-                                        <span>
-                                            {msg.timestamp
-                                                ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                                : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    <button
+                        onClick={leaveRoom}
+                        className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap"
+                        title="End Session"
+                    >
+                        <svg className="w-4 h-4 sm:w-4 sm:h-4 transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                        <span className="hidden sm:inline">End & Shred</span>
+                    </button>
+                </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth z-10 relative">
+                <div className="w-full max-w-6xl mx-auto flex flex-col space-y-4 sm:space-y-6 min-h-full">
+                    {messages.length === 0 && (
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto">
+                            <Logo className="w-12 h-12 sm:w-16 sm:h-16 opacity-20 grayscale" />
+                            <p className="text-sm sm:text-base text-center px-4">This room is secured. Awaiting transmission.</p>
+                        </div>
+                    )}
+
+                    {messages.map((msg, idx) => (
+                        <div key={idx} className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
+                            <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-sm relative group flex flex-col ${msg.isMine
+                                ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white rounded-br-sm shadow-[0_4px_20px_-5px_rgba(124,58,237,0.4)]'
+                                : 'bg-white/10 border border-white/5 text-slate-200 rounded-bl-sm backdrop-blur-md'
+                                }`}>
+                                <span className="break-words">{msg.content}</span>
+
+                                <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-blue-200' : 'text-slate-400'}`}>
+                                    <span>
+                                        {msg.timestamp
+                                            ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
+                                    {msg.isMine && (
+                                        <span className="ml-1 tracking-tighter">
+                                            {msg.isRead ? '✓✓' : '✓'}
                                         </span>
-                                        {msg.isMine && (
-                                            <span className="ml-1 tracking-tighter">
-                                                {msg.isRead ? '✓✓' : '✓'}
-                                            </span>
-                                        )}
-                                    </div>
+                                    )}
                                 </div>
                             </div>
-                        ))}
-                        <div ref={messagesEndRef} className="h-2" />
-                    </div>
+                        </div>
+                    ))}
+                    <div ref={messagesEndRef} className="h-2" />
                 </div>
-
-                <form onSubmit={sendMessage} className="p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md z-20 shrink-0">
-                    <div className="flex gap-2 sm:gap-3 w-full max-w-6xl mx-auto">
-                        <input
-                            type="text"
-                            value={input}
-                            onChange={(e) => setInput(e.target.value)}
-                            placeholder="Type an ephemeral message..."
-                            disabled={!isConnected}
-                            className="flex-1 bg-black/40 text-slate-200 placeholder:text-slate-500 text-[16px] px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 focus:bg-black/60 transition-all duration-300 disabled:opacity-50 shadow-inner"
-                        />
-                        <button
-                            type="submit"
-                            disabled={!isConnected || !input.trim()}
-                            className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 sm:px-8 py-3 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 hover:border-white/20 disabled:opacity-50 shadow-sm flex justify-center items-center gap-2 shrink-0"
-                        >
-                            <span className="hidden sm:inline">Send</span>
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7-7 7M21 12H3" />
-                            </svg>
-                        </button>
-                    </div>
-                </form>
             </div>
+
+            <form onSubmit={sendMessage} className="shrink-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md z-20 relative">
+                <div className="flex gap-2 sm:gap-3 w-full max-w-6xl mx-auto">
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder="Type an ephemeral message..."
+                        disabled={!isConnected}
+                        className="flex-1 bg-black/40 text-slate-200 placeholder:text-slate-500 text-[16px] px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 focus:bg-black/60 transition-all duration-300 disabled:opacity-50 shadow-inner"
+                    />
+                    <button
+                        type="submit"
+                        disabled={!isConnected || !input.trim()}
+                        className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 sm:px-8 py-3 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 hover:border-white/20 disabled:opacity-50 shadow-sm flex justify-center items-center gap-2 shrink-0"
+                    >
+                        <span className="hidden sm:inline">Send</span>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7-7 7M21 12H3" />
+                        </svg>
+                    </button>
+                </div>
+            </form>
         </div>
     );
 }
