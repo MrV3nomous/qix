@@ -52,11 +52,12 @@ func Connect() error {
 		return fmt.Errorf("REDIS_URL is not set in .env")
 	}
 
-	RedisClient = redis.NewClient(&redis.Options{
-		Addr:     redisURL,
-		Password: "",
-		DB:       0,
-	})
+	opts, err := redis.ParseURL(redisURL)
+	if err != nil {
+		return fmt.Errorf("failed to parse REDIS_URL: %v", err)
+	}
+
+	RedisClient = redis.NewClient(opts)
 
 	if err := RedisClient.Ping(ctx).Err(); err != nil {
 		return fmt.Errorf("failed to connect to Redis: %v", err)
