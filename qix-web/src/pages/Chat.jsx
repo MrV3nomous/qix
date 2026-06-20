@@ -10,6 +10,8 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
+    const [appHeight, setAppHeight] = useState(window.innerHeight);
+
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
@@ -23,19 +25,42 @@ export default function Chat() {
     }, [messages]);
 
     useEffect(() => {
+        document.documentElement.style.overflow = 'hidden';
+        document.documentElement.style.height = '100%';
         document.body.style.overflow = 'hidden';
-        document.body.style.height = '100dvh';
+        document.body.style.height = '100%';
+        document.body.style.position = 'fixed';
+        document.body.style.width = '100%';
+
+        const handleResize = () => {
+            if (window.visualViewport) {
+                setAppHeight(window.visualViewport.height);
+            } else {
+                setAppHeight(window.innerHeight);
+            }
+            setTimeout(scrollToBottom, 50);
+        };
+
+        window.addEventListener('resize', handleResize);
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', handleResize);
+        }
+
+        handleResize();
 
         return () => {
-            document.body.style.overflow = 'unset';
-            document.body.style.height = 'unset';
+            window.removeEventListener('resize', handleResize);
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', handleResize);
+            }
+            document.documentElement.style.overflow = '';
+            document.documentElement.style.height = '';
+            document.body.style.overflow = '';
+            document.body.style.height = '';
+            document.body.style.position = '';
+            document.body.style.width = '';
         };
     }, []);
-
-    useEffect(() => {
-        window.addEventListener('resize', scrollToBottom);
-        return () => window.removeEventListener('resize', scrollToBottom);
-    }, [messages]);
 
     useEffect(() => {
         const roomId = sessionStorage.getItem('qix_room_id');
@@ -164,6 +189,8 @@ export default function Chat() {
             ws.current.send(JSON.stringify(newMsg));
             setMessages((prev) => [...prev, { ...newMsg, content: input, isMine: true, isRead: false }]);
             setInput('');
+
+            setTimeout(() => scrollToBottom(), 50);
         } catch (err) {
             console.error("Encryption failed", err);
             alert("Failed to encrypt message.");
@@ -214,7 +241,10 @@ export default function Chat() {
     };
 
     return (
-        <div className="h-[100dvh] w-full flex flex-col bg-[#020617] text-slate-200 font-sans relative overflow-hidden selection:bg-violet-500/30">
+        <div
+            className="w-full bg-[#020617] text-slate-200 font-sans flex flex-col relative overflow-hidden selection:bg-violet-500/30"
+            style={{ height: `${appHeight}px` }}
+        >
 
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
@@ -223,7 +253,7 @@ export default function Chat() {
                 <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
             </div>
 
-            <div className="shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md">
+            <div className="shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative">
                 <div className="flex items-center gap-2 sm:gap-4">
                     <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0" />
                     <div className="min-w-0">
@@ -282,10 +312,10 @@ export default function Chat() {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth z-10 relative">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 scroll-smooth relative z-10">
                 <div className="w-full max-w-6xl mx-auto flex flex-col space-y-4 sm:space-y-6 min-h-full">
                     {messages.length === 0 && (
-                        <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto">
+                        <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto py-10">
                             <Logo className="w-12 h-12 sm:w-16 sm:h-16 opacity-20 grayscale" />
                             <p className="text-sm sm:text-base text-center px-4">This room is secured. Awaiting transmission.</p>
                         </div>
@@ -318,7 +348,7 @@ export default function Chat() {
                 </div>
             </div>
 
-            <form onSubmit={sendMessage} className="shrink-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md z-20 relative">
+            <form onSubmit={sendMessage} className="shrink-0 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md relative z-20">
                 <div className="flex gap-2 sm:gap-3 w-full max-w-6xl mx-auto">
                     <input
                         type="text"
