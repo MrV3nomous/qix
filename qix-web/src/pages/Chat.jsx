@@ -10,7 +10,7 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const [appHeight, setAppHeight] = useState(window.innerHeight);
+    const [viewportHeight, setViewportHeight] = useState('100dvh');
 
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
@@ -21,46 +21,36 @@ export default function Chat() {
     };
 
     useEffect(() => {
-        scrollToBottom();
-    }, [messages]);
-
-    useEffect(() => {
-        document.documentElement.style.overflow = 'hidden';
-        document.documentElement.style.height = '100%';
-        document.body.style.overflow = 'hidden';
-        document.body.style.height = '100%';
-        document.body.style.position = 'fixed';
-        document.body.style.width = '100%';
-
-        const handleResize = () => {
+        const handleViewportChange = () => {
             if (window.visualViewport) {
-                setAppHeight(window.visualViewport.height);
+                setViewportHeight(`${window.visualViewport.height}px`);
+                window.scrollTo(0, 0);
             } else {
-                setAppHeight(window.innerHeight);
+                setViewportHeight(`${window.innerHeight}px`);
             }
             setTimeout(scrollToBottom, 50);
         };
 
-        window.addEventListener('resize', handleResize);
         if (window.visualViewport) {
-            window.visualViewport.addEventListener('resize', handleResize);
+            window.visualViewport.addEventListener('resize', handleViewportChange);
+            window.visualViewport.addEventListener('scroll', handleViewportChange);
         }
+        window.addEventListener('resize', handleViewportChange);
 
-        handleResize();
+        handleViewportChange();
 
         return () => {
-            window.removeEventListener('resize', handleResize);
             if (window.visualViewport) {
-                window.visualViewport.removeEventListener('resize', handleResize);
+                window.visualViewport.removeEventListener('resize', handleViewportChange);
+                window.visualViewport.removeEventListener('scroll', handleViewportChange);
             }
-            document.documentElement.style.overflow = '';
-            document.documentElement.style.height = '';
-            document.body.style.overflow = '';
-            document.body.style.height = '';
-            document.body.style.position = '';
-            document.body.style.width = '';
+            window.removeEventListener('resize', handleViewportChange);
         };
     }, []);
+
+    useEffect(() => {
+        scrollToBottom();
+    }, [messages]);
 
     useEffect(() => {
         const roomId = sessionStorage.getItem('qix_room_id');
@@ -242,10 +232,9 @@ export default function Chat() {
 
     return (
         <div
-            className="w-full bg-[#020617] text-slate-200 font-sans flex flex-col relative overflow-hidden selection:bg-violet-500/30"
-            style={{ height: `${appHeight}px` }}
+            className="fixed top-0 left-0 w-full bg-[#020617] text-slate-200 font-sans flex flex-col overflow-hidden selection:bg-violet-500/30"
+            style={{ height: viewportHeight }}
         >
-
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
