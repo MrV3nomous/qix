@@ -15,6 +15,8 @@ export default function Chat() {
     const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
     const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
 
+    const [isObfuscated, setIsObfuscated] = useState(false);
+
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
@@ -40,6 +42,25 @@ export default function Chat() {
     useEffect(() => {
         scrollToBottom();
     }, [messages]);
+
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            setIsObfuscated(document.hidden);
+        };
+
+        const handleBlur = () => setIsObfuscated(true);
+        const handleFocus = () => setIsObfuscated(false);
+
+        document.addEventListener("visibilitychange", handleVisibilityChange);
+        window.addEventListener("blur", handleBlur);
+        window.addEventListener("focus", handleFocus);
+
+        return () => {
+            document.removeEventListener("visibilitychange", handleVisibilityChange);
+            window.removeEventListener("blur", handleBlur);
+            window.removeEventListener("focus", handleFocus);
+        };
+    }, []);
 
     useEffect(() => {
         const vault = getVault(roomId);
@@ -291,9 +312,35 @@ export default function Chat() {
 
     return (
         <div
-            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
+            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30 select-none"
             style={{ height: `${viewportHeight}px` }}
         >
+            <style>{`
+                .sleek-scroll::-webkit-scrollbar {
+                    width: 4px;
+                    height: 4px;
+                }
+                .sleek-scroll::-webkit-scrollbar-track {
+                    background: transparent;
+                }
+                .sleek-scroll::-webkit-scrollbar-thumb {
+                    background: rgba(255, 255, 255, 0.15);
+                    border-radius: 10px;
+                }
+                .sleek-scroll::-webkit-scrollbar-thumb:hover {
+                    background: rgba(255, 255, 255, 0.3);
+                }
+                .sleek-scroll {
+                    scrollbar-width: thin;
+                    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+                }
+            `}</style>
+
+            <div className={`absolute inset-0 z-50 bg-[#020617]/80 backdrop-blur-2xl transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center ${isObfuscated ? 'opacity-100' : 'opacity-0'}`}>
+                <Logo className="w-16 h-16 opacity-30 grayscale" />
+                <p className="mt-4 text-white/30 text-sm tracking-widest uppercase font-semibold">Vault Secured</p>
+            </div>
+
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -301,7 +348,7 @@ export default function Chat() {
                 <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
             </div>
 
-            <div className="shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative">
+            <div className={`shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative transition-all duration-300 ${isObfuscated ? 'blur-sm' : ''}`}>
                 <div className="flex items-center gap-2 sm:gap-4">
                     <button
                         onClick={() => navigate('/')}
@@ -380,7 +427,7 @@ export default function Chat() {
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto scroll-smooth relative z-10 p-4 sm:p-6 scrollbar-hide">
+            <div className={`flex-1 overflow-y-auto scroll-smooth relative z-10 p-4 sm:p-6 sleek-scroll transition-all duration-300 ${isObfuscated ? 'blur-sm opacity-50' : ''}`}>
                 <div className="w-full max-w-6xl mx-auto flex flex-col space-y-4 sm:space-y-6 min-h-full">
                     {messages.length === 0 && (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto py-10">
@@ -435,7 +482,7 @@ export default function Chat() {
                 </div>
             </div>
 
-            <form onSubmit={sendMessage} className="shrink-0 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md relative z-20">
+            <form onSubmit={sendMessage} className={`shrink-0 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md relative z-20 transition-all duration-300 ${isObfuscated ? 'blur-sm opacity-50' : ''}`}>
                 <div className="flex gap-2 sm:gap-3 w-full max-w-6xl mx-auto">
                     <input
                         type="text"
