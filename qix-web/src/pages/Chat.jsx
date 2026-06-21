@@ -12,25 +12,64 @@ export default function Chat() {
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
 
-    const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
-    const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
+    const [viewportConfig, setViewportConfig] = useState({ height: window.innerHeight, top: 0 });
 
+    const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
     const [isObfuscated, setIsObfuscated] = useState(false);
 
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
-
     const intentionalClose = useRef(false);
 
     useEffect(() => {
-        if (!window.visualViewport) return;
-        const handleResize = () => {
-            setViewportHeight(window.visualViewport.height);
+        const html = document.documentElement;
+        const body = document.body;
+
+        const origHtmlBg = html.style.backgroundColor;
+        const origBodyBg = body.style.backgroundColor;
+        const origBodyPos = body.style.position;
+        const origBodyOv = body.style.overflow;
+        const origBodyW = body.style.width;
+        const origBodyH = body.style.height;
+
+        html.style.backgroundColor = '#020617';
+        body.style.backgroundColor = '#020617';
+
+        body.style.position = 'fixed';
+        body.style.overflow = 'hidden';
+        body.style.width = '100%';
+        body.style.height = '100%';
+
+        const updateViewport = () => {
+            if (window.visualViewport) {
+                setViewportConfig({
+                    height: window.visualViewport.height,
+                    top: window.visualViewport.offsetTop
+                });
+                window.scrollTo(0, 0);
+            }
         };
-        window.visualViewport.addEventListener('resize', handleResize);
-        handleResize();
-        return () => window.visualViewport.removeEventListener('resize', handleResize);
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', updateViewport);
+            window.visualViewport.addEventListener('scroll', updateViewport);
+            updateViewport();
+        }
+
+        return () => {
+            html.style.backgroundColor = origHtmlBg;
+            body.style.backgroundColor = origBodyBg;
+            body.style.position = origBodyPos;
+            body.style.overflow = origBodyOv;
+            body.style.width = origBodyW;
+            body.style.height = origBodyH;
+
+            if (window.visualViewport) {
+                window.visualViewport.removeEventListener('resize', updateViewport);
+                window.visualViewport.removeEventListener('scroll', updateViewport);
+            }
+        };
     }, []);
 
     const scrollToBottom = () => {
@@ -312,27 +351,30 @@ export default function Chat() {
 
     return (
         <div
-            className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30 select-none"
-            style={{ height: `${viewportHeight}px` }}
+            className="fixed left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30 select-none"
+            style={{
+                height: `${viewportConfig.height}px`,
+                top: `${viewportConfig.top}px`
+            }}
         >
             <style>{`
                 .sleek-scroll::-webkit-scrollbar {
-                    width: 4px;
-                    height: 4px;
+                    width: 3px;
+                    height: 3px;
                 }
                 .sleek-scroll::-webkit-scrollbar-track {
                     background: transparent;
                 }
                 .sleek-scroll::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.15);
+                    background: rgba(255, 255, 255, 0.1);
                     border-radius: 10px;
                 }
                 .sleek-scroll::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.3);
+                    background: rgba(255, 255, 255, 0.2);
                 }
                 .sleek-scroll {
                     scrollbar-width: thin;
-                    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+                    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
                 }
             `}</style>
 
@@ -487,6 +529,7 @@ export default function Chat() {
                     <input
                         type="text"
                         value={input}
+                        onFocus={() => setTimeout(scrollToBottom, 150)}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Type an ephemeral message..."
                         disabled={!isConnected}
