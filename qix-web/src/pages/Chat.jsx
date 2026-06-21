@@ -17,7 +17,6 @@ export default function Chat() {
     const cryptoKeyRef = useRef(null);
 
     const intentionalClose = useRef(false);
-    const retryCount = useRef(0);
 
     useEffect(() => {
         if (!window.visualViewport) return;
@@ -59,6 +58,7 @@ export default function Chat() {
 
                 if (response.ok) {
                     const encryptedHistory = await response.json();
+
                     const decryptedHistory = [];
                     for (const msg of encryptedHistory) {
                         try {
@@ -68,7 +68,14 @@ export default function Chat() {
                             console.error("Could not decrypt historical message", err);
                         }
                     }
-                    if (isMounted) setMessages(decryptedHistory);
+
+                    if (isMounted) {
+                        setMessages(prev => {
+                            const historyIds = new Set(decryptedHistory.map(m => m.message_id));
+                            const pendingRealtime = prev.filter(m => !historyIds.has(m.message_id));
+                            return [...decryptedHistory, ...pendingRealtime];
+                        });
+                    }
                 } else if (response.status === 401) {
                     localStorage.clear();
                     navigate('/');
@@ -90,8 +97,7 @@ export default function Chat() {
             socket.onopen = () => {
                 if (isMounted) {
                     setIsConnected(true);
-                    retryCount.current = 0;
-                    fetchHistory();
+                    fetchHistory(); // Sync missed messages on every successful reconnect
                 }
             };
 
@@ -134,16 +140,9 @@ export default function Chat() {
             socket.onclose = () => {
                 if (isMounted) {
                     setIsConnected(false);
+                    // Attempt silent reconnect if connection dropped organically
                     if (!intentionalClose.current) {
-                        if (retryCount.current < 5) {
-                            retryCount.current++;
-                            console.log(`Socket closed. Reconnecting... (Attempt ${retryCount.current})`);
-                            setTimeout(connectWebSocket, 1500 * retryCount.current);
-                        } else {
-                            alert("Connection permanently lost. The room may have expired.");
-                            localStorage.clear();
-                            navigate('/');
-                        }
+                        setTimeout(connectWebSocket, 2000);
                     }
                 }
             };
@@ -171,10 +170,11 @@ export default function Chat() {
         initializeChat();
 
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && !isConnected && !intentionalClose.current) {
-                if (!ws.current || ws.current.readyState === WebSocket.CLOSED) {
-                    retryCount.current = 0;
+            if (document.visibilityState === 'visible' && !intentionalClose.current) {
+                if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
                     connectWebSocket();
+                } else {
+                    fetchHistory();
                 }
             }
         };
