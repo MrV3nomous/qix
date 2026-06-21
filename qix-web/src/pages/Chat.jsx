@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { importKey, encryptMessage, decryptMessage } from '../utils/crypto';
+import { getVault, destroyVault } from '../utils/vaultManager';
 
 export default function Chat() {
+    const { roomId } = useParams();
     const navigate = useNavigate();
     const [messages, setMessages] = useState([]);
     const [input, setInput] = useState('');
@@ -39,15 +41,14 @@ export default function Chat() {
     }, [messages]);
 
     useEffect(() => {
-        const roomId = localStorage.getItem('qix_room_id');
-        const rawKey = localStorage.getItem('qix_e2e_key');
-        const authToken = localStorage.getItem('qix_auth_token');
+        const vault = getVault(roomId);
 
-        if (!roomId || !rawKey || !authToken) {
+        if (!vault) {
             navigate('/');
             return;
         }
 
+        const { auth_token: authToken, e2e_key: rawKey } = vault;
         let isMounted = true;
 
         const fetchHistory = async () => {
@@ -77,7 +78,7 @@ export default function Chat() {
                         });
                     }
                 } else if (response.status === 401) {
-                    localStorage.clear();
+                    destroyVault(roomId);
                     navigate('/');
                 }
             } catch (error) {
@@ -97,7 +98,7 @@ export default function Chat() {
             socket.onopen = () => {
                 if (isMounted) {
                     setIsConnected(true);
-                    fetchHistory(); // Sync missed messages on every successful reconnect
+                    fetchHistory();
                 }
             };
 
@@ -106,7 +107,7 @@ export default function Chat() {
 
                 if (incomingMsg.type === 'TERMINATE') {
                     alert("The other user has ended the secure session. All data has been shredded.");
-                    localStorage.clear();
+                    destroyVault(roomId);
                     navigate('/');
                     return;
                 }
@@ -140,7 +141,6 @@ export default function Chat() {
             socket.onclose = () => {
                 if (isMounted) {
                     setIsConnected(false);
-                    // Attempt silent reconnect if connection dropped organically
                     if (!intentionalClose.current) {
                         setTimeout(connectWebSocket, 2000);
                     }
@@ -186,7 +186,7 @@ export default function Chat() {
             if (ws.current) ws.current.close();
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
-    }, [navigate]);
+    }, [roomId, navigate]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
@@ -224,23 +224,26 @@ export default function Chat() {
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
             ws.current.send(JSON.stringify({ type: 'TERMINATE' }));
         } else {
-            try {
-                const token = localStorage.getItem('qix_auth_token');
-                await fetch(`${import.meta.env.VITE_API_URL}/terminate`, {
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-            } catch (error) {
-                console.error("Failed to send terminate signal", error);
+            const vault = getVault(roomId);
+            if (vault) {
+                try {
+                    await fetch(`${import.meta.env.VITE_API_URL}/terminate`, {
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${vault.auth_token}` }
+                    });
+                } catch (error) {
+                    console.error("Failed to send terminate signal", error);
+                }
             }
         }
 
-        localStorage.clear();
+        destroyVault(roomId);
         navigate('/');
     };
 
     const getInviteLink = () => {
-        return localStorage.getItem('qix_invite_link');
+        const vault = getVault(roomId);
+        return vault ? vault.invite_link : '';
     };
 
     const copyToClipboard = () => {
@@ -304,7 +307,7 @@ export default function Chat() {
                             </svg>
                         ) : (
                             <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                             </svg>
                         )}
                     </button>

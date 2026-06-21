@@ -10,7 +10,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/join" element={<Join />} />
-          <Route path="/chat" element={<Chat />} />
+          <Route path="/chat/:roomId" element={<Chat />} />
         </Routes>
       </div>
     </BrowserRouter>

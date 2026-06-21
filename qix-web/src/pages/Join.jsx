@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
+import { getAllVaults, saveVault } from '../utils/vaultManager';
 
 export default function Join() {
     const [searchParams] = useSearchParams();
@@ -20,19 +21,19 @@ export default function Join() {
 
         const encryptionKey = hashMatch[1];
         const fullInviteLink = `${window.location.origin}/join?token=${inviteToken}#key=${encryptionKey}`;
-        const savedLink = localStorage.getItem('qix_invite_link');
-        const savedToken = localStorage.getItem('qix_auth_token');
 
-        if (savedLink === fullInviteLink && savedToken) {
+        // Check if the user is already part of this vault
+        const vaults = getAllVaults();
+        const existingRoomId = Object.keys(vaults).find(id => vaults[id].invite_link === fullInviteLink);
+
+        if (existingRoomId) {
             setStatus('Active vault detected. Re-entering...');
-            const timer = setTimeout(() => navigate('/chat'), 500);
+            const timer = setTimeout(() => navigate(`/chat/${existingRoomId}`), 500);
             return () => clearTimeout(timer);
         }
 
         const joinRoom = async () => {
             try {
-                localStorage.clear();
-
                 const response = await fetch(`${import.meta.env.VITE_API_URL}/join`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -47,13 +48,15 @@ export default function Join() {
 
                 const data = await response.json();
 
-                localStorage.setItem('qix_room_id', data.room_id);
-                localStorage.setItem('qix_invite_link', fullInviteLink);
-                localStorage.setItem('qix_e2e_key', encryptionKey);
-                localStorage.setItem('qix_session_id', data.session_id);
-                localStorage.setItem('qix_auth_token', data.auth_token);
+                saveVault(data.room_id, {
+                    invite_link: fullInviteLink,
+                    e2e_key: encryptionKey,
+                    session_id: data.session_id,
+                    auth_token: data.auth_token,
+                    role: 'guest'
+                });
 
-                navigate('/chat');
+                navigate(`/chat/${data.room_id}`);
             } catch (error) {
                 console.error(error);
                 setStatus(error.message || 'This room has been destroyed or the link has expired.');
@@ -70,7 +73,6 @@ export default function Join() {
 
     return (
         <div className="min-h-screen w-full bg-[#020617] text-slate-200 font-sans relative flex flex-col justify-center items-center p-6 selection:bg-violet-500/30">
-
             <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -80,7 +82,6 @@ export default function Join() {
 
             <div className="relative z-10 w-full max-w-md flex flex-col items-center text-center animate-fade-in-up">
                 <div className="w-full bg-white/[0.02] backdrop-blur-3xl border border-white/10 p-10 rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden">
-
                     <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none"></div>
 
                     <div className="relative z-10 flex flex-col items-center">
@@ -89,12 +90,10 @@ export default function Join() {
                         {!hasError ? (
                             <div className="flex flex-col items-center space-y-6">
                                 <h2 className="text-2xl font-semibold text-white tracking-tight">Decrypting Vault</h2>
-
                                 <div className="relative flex justify-center items-center w-12 h-12">
                                     <div className="absolute w-full h-full border-4 border-white/5 rounded-full"></div>
                                     <div className="absolute w-full h-full border-4 border-violet-500 rounded-full border-t-transparent animate-spin"></div>
                                 </div>
-
                                 <p className="text-slate-400 font-light text-sm">{status}</p>
                             </div>
                         ) : (
@@ -104,12 +103,10 @@ export default function Join() {
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                                     </svg>
                                 </div>
-
                                 <div>
                                     <h2 className="text-2xl font-semibold text-white tracking-tight mb-2">Access Denied</h2>
                                     <p className="text-slate-400 font-light text-sm leading-relaxed">{status}</p>
                                 </div>
-
                                 <Link
                                     to="/"
                                     className="mt-4 w-full py-4 bg-white/10 hover:bg-white/15 text-white border border-white/10 hover:border-white/20 rounded-2xl font-medium transition-all duration-300 shadow-sm flex justify-center items-center"
