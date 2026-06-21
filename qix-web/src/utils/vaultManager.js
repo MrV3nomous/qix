@@ -17,9 +17,13 @@ export const getVault = (roomId) => {
 
 export const saveVault = (roomId, vaultData) => {
     const vaults = getAllVaults();
+    const existingVault = vaults[roomId] || {};
+
     vaults[roomId] = {
+        ...existingVault,
         ...vaultData,
-        lastAccessed: new Date().toISOString()
+        lastAccessed: new Date().toISOString(),
+        createdAt: existingVault.createdAt || new Date().toISOString()
     };
     localStorage.setItem(VAULTS_KEY, JSON.stringify(vaults));
 };

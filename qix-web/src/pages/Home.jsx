@@ -88,6 +88,12 @@ export default function Home() {
         }
     };
 
+    const formatVaultDate = (isoString) => {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
     const activeVaultKeys = Object.keys(vaults);
 
     return (
@@ -134,7 +140,10 @@ export default function Home() {
                                 <div className="w-full space-y-3 max-h-[40vh] overflow-y-auto scrollbar-hide pb-2">
                                     {activeVaultKeys.map(id => (
                                         <div key={id} className="bg-white/5 border border-white/10 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
-                                            <span className="text-xs font-mono text-slate-300 truncate w-full sm:w-32 text-left">{id}</span>
+                                            <div className="flex flex-col text-left">
+                                                <span className="text-xs font-mono text-slate-200 truncate w-full sm:w-32">{id}</span>
+                                                <span className="text-[10px] text-slate-500 font-sans mt-0.5">{formatVaultDate(vaults[id].createdAt)}</span>
+                                            </div>
                                             <div className="flex gap-2 w-full sm:w-auto justify-end">
                                                 <button onClick={() => copyVaultLink(vaults[id].invite_link, id)} className="p-2 sm:px-3 sm:py-2 bg-white/5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shadow-sm flex items-center justify-center" title="Copy Link">
                                                     {copiedVaultId === id ? (

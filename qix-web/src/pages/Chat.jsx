@@ -13,6 +13,7 @@ export default function Chat() {
     const [copied, setCopied] = useState(false);
 
     const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+    const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
 
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
@@ -47,6 +48,8 @@ export default function Chat() {
             navigate('/');
             return;
         }
+
+        setVaultCreatedAt(vault.createdAt);
 
         const { auth_token: authToken, e2e_key: rawKey } = vault;
         let isMounted = true;
@@ -266,6 +269,28 @@ export default function Chat() {
         }
     };
 
+    const formatMessageDate = (dateString) => {
+        if (!dateString) return '';
+        const date = new Date(dateString);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        if (date.toDateString() === today.toDateString()) {
+            return 'Today';
+        } else if (date.toDateString() === yesterday.toDateString()) {
+            return 'Yesterday';
+        } else {
+            return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+        }
+    };
+
+    const formatHeaderDate = (isoString) => {
+        if (!isoString) return '';
+        const d = new Date(isoString);
+        return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    };
+
     return (
         <div
             className="fixed top-0 left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30"
@@ -294,11 +319,19 @@ export default function Chat() {
 
                     <div className="min-w-0">
                         <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">Secure Vault</h2>
-                        <div className="flex items-center text-[10px] sm:text-xs mt-0.5">
-                            <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm shrink-0 ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>
-                            <span className="text-slate-400 font-light truncate">
-                                {isConnected ? 'E2E Active' : 'Connecting...'}
-                            </span>
+                        <div className="flex items-center gap-2 mt-0.5">
+                            <div className="flex items-center text-[10px] sm:text-xs">
+                                <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm shrink-0 ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>
+                                <span className="text-slate-400 font-light truncate">
+                                    {isConnected ? 'E2E Active' : 'Connecting...'}
+                                </span>
+                            </div>
+                            {vaultCreatedAt && (
+                                <>
+                                    <span className="text-white/20 text-[10px]">•</span>
+                                    <span className="text-[10px] sm:text-xs text-slate-500 font-sans tracking-wide truncate">{formatHeaderDate(vaultCreatedAt)}</span>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -358,29 +391,44 @@ export default function Chat() {
                         </div>
                     )}
 
-                    {messages.map((msg, idx) => (
-                        <div key={idx} className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                            <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-sm relative group flex flex-col ${msg.isMine
-                                ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white rounded-br-sm shadow-[0_4px_20px_-5px_rgba(124,58,237,0.4)]'
-                                : 'bg-white/10 border border-white/5 text-slate-200 rounded-bl-sm backdrop-blur-md'
-                                }`}>
-                                <span className="break-words">{msg.content}</span>
+                    {messages.map((msg, idx) => {
+                        const currentDateStr = new Date(msg.timestamp).toDateString();
+                        const prevDateStr = idx > 0 ? new Date(messages[idx-1].timestamp).toDateString() : null;
+                        const showDivider = currentDateStr !== prevDateStr;
 
-                                <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-blue-200' : 'text-slate-400'}`}>
-                                    <span>
-                                        {msg.timestamp
-                                            ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                                            : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                    </span>
-                                    {msg.isMine && (
-                                        <span className="ml-1 tracking-tighter">
-                                            {msg.isRead ? '✓✓' : '✓'}
+                        return (
+                            <div key={idx} className="flex flex-col w-full">
+                                {showDivider && (
+                                    <div className="flex justify-center my-6 animate-fade-in-up">
+                                        <span className="bg-white/5 backdrop-blur-md border border-white/10 text-slate-400 text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest font-semibold shadow-sm">
+                                            {formatMessageDate(msg.timestamp)}
                                         </span>
-                                    )}
+                                    </div>
+                                )}
+                                <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
+                                    <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-sm relative group flex flex-col ${msg.isMine
+                                        ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white rounded-br-sm shadow-[0_4px_20px_-5px_rgba(124,58,237,0.4)]'
+                                        : 'bg-white/10 border border-white/5 text-slate-200 rounded-bl-sm backdrop-blur-md'
+                                        }`}>
+                                        <span className="break-words">{msg.content}</span>
+
+                                        <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-blue-200' : 'text-slate-400'}`}>
+                                            <span>
+                                                {msg.timestamp
+                                                    ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                                                    : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                            {msg.isMine && (
+                                                <span className="ml-1 tracking-tighter">
+                                                    {msg.isRead ? '✓✓' : '✓'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
                     <div ref={messagesEndRef} className="h-2" />
                 </div>
             </div>
