@@ -10,6 +10,8 @@ export default function Home() {
     const [copied, setCopied] = useState(false);
     const [copiedVaultId, setCopiedVaultId] = useState(null);
     const [vaults, setVaults] = useState({});
+
+    const [roomName, setRoomName] = useState('');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -20,7 +22,9 @@ export default function Home() {
         setIsLoading(true);
         try {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/room`, {
-                method: 'POST'
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: roomName.trim() })
             });
 
             if (!response.ok) throw new Error('Failed to create room');
@@ -32,6 +36,7 @@ export default function Home() {
             const fullInviteLink = `${data.invite_link}#key=${exportedKey}`;
 
             saveVault(data.room_id, {
+                room_name: data.room_name,
                 invite_link: fullInviteLink,
                 e2e_key: exportedKey,
                 session_id: data.session_id,
@@ -40,6 +45,7 @@ export default function Home() {
             });
 
             setInviteData({ ...data, invite_link: fullInviteLink });
+            setRoomName('');
         } catch (error) {
             console.error(error);
             alert('Oops! We couldn’t connect to the server. Please try again.');
@@ -140,8 +146,8 @@ export default function Home() {
                                 <div className="w-full space-y-3 max-h-[40vh] overflow-y-auto scrollbar-hide pb-2">
                                     {activeVaultKeys.map(id => (
                                         <div key={id} className="bg-white/5 border border-white/10 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
-                                            <div className="flex flex-col text-left">
-                                                <span className="text-xs font-mono text-slate-200 truncate w-full sm:w-32">{id}</span>
+                                            <div className="flex flex-col text-left w-full sm:w-auto">
+                                                <span className="text-sm font-semibold text-white truncate w-full sm:w-32">{vaults[id].room_name || 'Secure Vault'}</span>
                                                 <span className="text-[10px] text-slate-500 font-sans mt-0.5">{formatVaultDate(vaults[id].createdAt)}</span>
                                             </div>
                                             <div className="flex gap-2 w-full sm:w-auto justify-end">
@@ -167,10 +173,19 @@ export default function Home() {
                                     ))}
                                 </div>
 
+                                <input
+                                    type="text"
+                                    value={roomName}
+                                    onChange={(e) => setRoomName(e.target.value)}
+                                    placeholder="Name your vault (optional)..."
+                                    className="w-full bg-black/40 text-slate-200 placeholder:text-slate-500 px-6 py-4 mt-2 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 shadow-inner"
+                                    disabled={isLoading}
+                                    maxLength={30}
+                                />
                                 <button
                                     onClick={createRoom}
                                     disabled={isLoading}
-                                    className="w-full py-4 mt-2 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-2xl shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+                                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-2xl shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
                                 >
                                     {isLoading ? 'Creating...' : '+ Create Another Vault'}
                                 </button>
@@ -182,7 +197,16 @@ export default function Home() {
                                 </button>
                             </div>
                         ) : !inviteData ? (
-                            <div className="flex flex-col items-center space-y-6 relative z-10">
+                            <div className="flex flex-col items-center space-y-4 relative z-10 w-full">
+                                <input
+                                    type="text"
+                                    value={roomName}
+                                    onChange={(e) => setRoomName(e.target.value)}
+                                    placeholder="Name your vault (optional)..."
+                                    className="w-full bg-black/40 text-slate-200 placeholder:text-slate-500 px-6 py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 shadow-inner"
+                                    disabled={isLoading}
+                                    maxLength={30}
+                                />
                                 <button
                                     onClick={createRoom}
                                     disabled={isLoading}
@@ -190,7 +214,7 @@ export default function Home() {
                                 >
                                     {isLoading ? 'Creating secure connection...' : 'Start a Secure Conversation'}
                                 </button>
-                                <p className="text-sm text-slate-400/80 font-light">No signup. No app to download. 100% anonymous.</p>
+                                <p className="text-sm text-slate-400/80 font-light mt-2">No signup. No app to download. 100% anonymous.</p>
                             </div>
                         ) : (
                             <div className="space-y-6 animate-fade-in-up relative z-10">
