@@ -10,7 +10,6 @@ export default function Join() {
 
     useEffect(() => {
         const inviteToken = searchParams.get('token');
-
         const hashMatch = window.location.hash.match(/#key=(.+)/);
 
         if (!inviteToken || !hashMatch) {
@@ -20,6 +19,15 @@ export default function Join() {
         }
 
         const encryptionKey = hashMatch[1];
+        const fullInviteLink = `${window.location.origin}/join?token=${inviteToken}#key=${encryptionKey}`;
+        const savedLink = localStorage.getItem('qix_invite_link');
+        const savedToken = localStorage.getItem('qix_auth_token');
+
+        if (savedLink === fullInviteLink && savedToken) {
+            setStatus('Active vault detected. Re-entering...');
+            const timer = setTimeout(() => navigate('/chat'), 500);
+            return () => clearTimeout(timer);
+        }
 
         const joinRoom = async () => {
             try {
@@ -38,8 +46,6 @@ export default function Join() {
                 }
 
                 const data = await response.json();
-
-                const fullInviteLink = `${window.location.origin}/join?token=${inviteToken}#key=${encryptionKey}`;
 
                 localStorage.setItem('qix_room_id', data.room_id);
                 localStorage.setItem('qix_invite_link', fullInviteLink);
