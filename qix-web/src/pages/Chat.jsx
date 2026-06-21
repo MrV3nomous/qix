@@ -280,7 +280,18 @@ export default function Chat() {
 
             <div className="shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative">
                 <div className="flex items-center gap-2 sm:gap-4">
-                    <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0" />
+                    <button
+                        onClick={() => navigate('/')}
+                        className="p-2 sm:px-3 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors flex items-center justify-center shrink-0"
+                        title="Back to Dashboard"
+                    >
+                        <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                    </button>
+
+                    <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0 hidden sm:block" />
+
                     <div className="min-w-0">
                         <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">Secure Vault</h2>
                         <div className="flex items-center text-[10px] sm:text-xs mt-0.5">

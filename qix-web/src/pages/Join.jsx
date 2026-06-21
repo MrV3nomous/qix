@@ -22,9 +22,11 @@ export default function Join() {
         const encryptionKey = hashMatch[1];
         const fullInviteLink = `${window.location.origin}/join?token=${inviteToken}#key=${encryptionKey}`;
 
-        // Check if the user is already part of this vault
         const vaults = getAllVaults();
-        const existingRoomId = Object.keys(vaults).find(id => vaults[id].invite_link === fullInviteLink);
+        const existingRoomId = Object.keys(vaults).find(id => {
+            const vaultLink = vaults[id].invite_link || "";
+            return vaultLink.includes(inviteToken);
+        });
 
         if (existingRoomId) {
             setStatus('Active vault detected. Re-entering...');
@@ -72,7 +74,7 @@ export default function Join() {
     }, [searchParams, navigate]);
 
     return (
-        <div className="min-h-screen w-full bg-[#020617] text-slate-200 font-sans relative flex flex-col justify-center items-center p-6 selection:bg-violet-500/30">
+        <div className="min-h-[100dvh] w-full bg-[#020617] text-slate-200 font-sans relative flex flex-col justify-center items-center p-6 selection:bg-violet-500/30 overflow-y-auto">
             <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -80,7 +82,7 @@ export default function Join() {
                 <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
             </div>
 
-            <div className="relative z-10 w-full max-w-md flex flex-col items-center text-center animate-fade-in-up">
+            <div className="relative z-10 w-full max-w-md flex flex-col items-center text-center animate-fade-in-up my-auto">
                 <div className="w-full bg-white/[0.02] backdrop-blur-3xl border border-white/10 p-10 rounded-[2.5rem] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] relative overflow-hidden">
                     <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent opacity-50 pointer-events-none"></div>
 
