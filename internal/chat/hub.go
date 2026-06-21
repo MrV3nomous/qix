@@ -5,7 +5,7 @@ import (
 )
 
 type Hub struct {
-	sync.RWMutex
+	sync.Mutex
 	Rooms map[string]map[string]*Client
 }
 
@@ -28,16 +28,18 @@ func (h *Hub) Unregister(client *Client) {
 	defer h.Unlock()
 
 	if room, ok := h.Rooms[client.Claims.RoomID]; ok {
-		delete(room, client.Claims.SessionID)
-		if len(room) == 0 {
-			delete(h.Rooms, client.Claims.RoomID)
+		if currentClient, exists := room[client.Claims.SessionID]; exists && currentClient == client {
+			delete(room, client.Claims.SessionID)
+			if len(room) == 0 {
+				delete(h.Rooms, client.Claims.RoomID)
+			}
 		}
 	}
 }
 
 func (h *Hub) BroadcastToRoom(roomID string, senderSessionID string, message []byte) {
-	h.RLock()
-	defer h.RUnlock()
+	h.Lock()
+	defer h.Unlock()
 
 	if room, ok := h.Rooms[roomID]; ok {
 		for sessionID, client := range room {
