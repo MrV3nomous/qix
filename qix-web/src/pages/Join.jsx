@@ -51,6 +51,7 @@ export default function Join() {
                 const data = await response.json();
 
                 saveVault(data.room_id, {
+                    room_name: data.room_name,
                     invite_link: fullInviteLink,
                     e2e_key: encryptionKey,
                     session_id: data.session_id,

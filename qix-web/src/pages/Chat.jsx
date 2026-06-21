@@ -15,6 +15,7 @@ export default function Chat() {
     const [viewportConfig, setViewportConfig] = useState({ height: window.innerHeight, top: 0 });
 
     const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
+    const [vaultName, setVaultName] = useState('Secure Vault');
     const [isObfuscated, setIsObfuscated] = useState(false);
 
     const ws = useRef(null);
@@ -110,6 +111,7 @@ export default function Chat() {
         }
 
         setVaultCreatedAt(vault.createdAt);
+        setVaultName(vault.room_name || 'Secure Vault');
 
         const { auth_token: authToken, e2e_key: rawKey } = vault;
         let isMounted = true;
@@ -405,7 +407,7 @@ export default function Chat() {
                     <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0 hidden sm:block" />
 
                     <div className="min-w-0">
-                        <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">Secure Vault</h2>
+                        <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">{vaultName}</h2>
                         <div className="flex items-center gap-2 mt-0.5">
                             <div className="flex items-center text-[10px] sm:text-xs">
                                 <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm shrink-0 ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>

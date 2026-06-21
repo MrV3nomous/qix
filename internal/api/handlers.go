@@ -37,6 +37,7 @@ type HistoryMessage struct {
 
 type Room struct {
     ID               string     `bson:"_id"`
+    Name             string     `bson:"name"`
     SchemaVersion    int        `bson:"schemaVersion"`
     CreatorSessionID string     `bson:"creatorSessionId"`
     GuestSessionID   string     `bson:"guestSessionId"`
@@ -66,6 +67,15 @@ func extractToken(r *http.Request) string {
 }
 
 func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
+    var req struct {
+        Name string `json:"name"`
+    }
+    json.NewDecoder(r.Body).Decode(&req)
+    
+    if req.Name == "" {
+        req.Name = "Secure Vault"
+    }
+
     roomID := "room_" + generateSecureID(8)
     creatorSessionID := "sess_" + generateSecureID(8)
     guestSessionID := "sess_" + generateSecureID(8)
@@ -76,6 +86,7 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 
     newRoom := Room{
         ID:               roomID,
+        Name:             req.Name,
         SchemaVersion:    1,
         CreatorSessionID: creatorSessionID,
         GuestSessionID:   guestSessionID,
@@ -121,6 +132,7 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 
     response := map[string]string{
         "room_id":     roomID,
+        "room_name":   req.Name,
         "invite_link": frontendURL + "/join?token=" + guestInviteToken,
         "session_id":  creatorSessionID,
         "auth_token":  creatorToken,
@@ -195,6 +207,7 @@ func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 
     response := map[string]string{
         "room_id":    room.ID,
+        "room_name":  room.Name,
         "session_id": room.GuestSessionID,
         "auth_token": guestToken,
     }
