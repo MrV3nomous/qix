@@ -8,6 +8,7 @@ export default function Home() {
     const [isLoading, setIsLoading] = useState(false);
     const [inviteData, setInviteData] = useState(null);
     const [copied, setCopied] = useState(false);
+    const [copiedVaultId, setCopiedVaultId] = useState(null);
     const [vaults, setVaults] = useState({});
     const navigate = useNavigate();
 
@@ -67,6 +68,26 @@ export default function Home() {
         }
     };
 
+    const copyVaultLink = (link, id) => {
+        navigator.clipboard.writeText(link);
+        setCopiedVaultId(id);
+        setTimeout(() => setCopiedVaultId(null), 2000);
+    };
+
+    const shareVaultLink = async (link) => {
+        if (navigator.share) {
+            try {
+                await navigator.share({
+                    title: 'Qix Secure Session',
+                    text: 'Join my private, self-destructing chat room:',
+                    url: link,
+                });
+            } catch (err) {
+                console.error('Share failed or was cancelled:', err);
+            }
+        }
+    };
+
     const activeVaultKeys = Object.keys(vaults);
 
     return (
@@ -112,11 +133,26 @@ export default function Home() {
 
                                 <div className="w-full space-y-3 max-h-[40vh] overflow-y-auto scrollbar-hide pb-2">
                                     {activeVaultKeys.map(id => (
-                                        <div key={id} className="bg-white/5 border border-white/10 p-3 rounded-2xl flex items-center justify-between">
-                                            <span className="text-xs font-mono text-slate-300 truncate w-24 sm:w-32 text-left">{id}</span>
-                                            <div className="flex gap-2">
-                                                <button onClick={() => navigate(`/chat/${id}`)} className="px-3 py-2 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-xl hover:bg-emerald-500/30 transition-colors shadow-sm">Enter</button>
-                                                <button onClick={() => { destroyVault(id); setVaults(getAllVaults()); }} className="px-3 py-2 bg-rose-500/10 text-rose-400 text-xs font-medium rounded-xl hover:bg-rose-500/20 transition-colors shadow-sm">Shred</button>
+                                        <div key={id} className="bg-white/5 border border-white/10 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
+                                            <span className="text-xs font-mono text-slate-300 truncate w-full sm:w-32 text-left">{id}</span>
+                                            <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                                <button onClick={() => copyVaultLink(vaults[id].invite_link, id)} className="p-2 sm:px-3 sm:py-2 bg-white/5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shadow-sm flex items-center justify-center" title="Copy Link">
+                                                    {copiedVaultId === id ? (
+                                                        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                    ) : (
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                                        </svg>
+                                                    )}
+                                                </button>
+                                                {navigator.share && (
+                                                    <button onClick={() => shareVaultLink(vaults[id].invite_link)} className="p-2 sm:px-3 sm:py-2 bg-white/5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shadow-sm flex items-center justify-center" title="Share Link">
+                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                                    </button>
+                                                )}
+                                                <button onClick={() => navigate(`/chat/${id}`)} className="px-4 py-2 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-xl hover:bg-emerald-500/30 transition-colors shadow-sm">Enter</button>
+                                                <button onClick={() => { destroyVault(id); setVaults(getAllVaults()); }} className="px-4 py-2 bg-rose-500/10 text-rose-400 text-xs font-medium rounded-xl hover:bg-rose-500/20 transition-colors shadow-sm">Shred</button>
                                             </div>
                                         </div>
                                     ))}
@@ -188,10 +224,20 @@ export default function Home() {
 
                                 <button
                                     onClick={() => navigate(`/chat/${inviteData.room_id}`)}
-                                    className="w-full text-slate-400 hover:text-white pt-4 text-sm font-medium transition-colors group/btn flex justify-center items-center gap-2"
+                                    className="w-full text-slate-400 hover:text-white pt-4 pb-2 text-sm font-medium transition-colors group/btn flex justify-center items-center gap-2"
                                 >
                                     Enter the Chat Room
                                     <span className="transform group-hover/btn:translate-x-1 transition-transform">→</span>
+                                </button>
+
+                                <button
+                                    onClick={() => {
+                                        setInviteData(null);
+                                        setVaults(getAllVaults());
+                                    }}
+                                    className="w-full text-slate-500 hover:text-slate-300 pt-2 text-sm font-medium transition-colors flex justify-center items-center gap-2"
+                                >
+                                    ← Back to Dashboard
                                 </button>
                             </div>
                         )}
