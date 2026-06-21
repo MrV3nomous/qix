@@ -269,19 +269,17 @@ export default function Chat() {
         }
     };
 
-    const formatMessageDate = (dateString) => {
-        if (!dateString) return '';
-        const date = new Date(dateString);
+    const formatMessageDate = (validDate) => {
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
 
-        if (date.toDateString() === today.toDateString()) {
+        if (validDate.toDateString() === today.toDateString()) {
             return 'Today';
-        } else if (date.toDateString() === yesterday.toDateString()) {
+        } else if (validDate.toDateString() === yesterday.toDateString()) {
             return 'Yesterday';
         } else {
-            return date.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
+            return validDate.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
         }
     };
 
@@ -392,16 +390,20 @@ export default function Chat() {
                     )}
 
                     {messages.map((msg, idx) => {
-                        const currentDateStr = new Date(msg.timestamp).toDateString();
-                        const prevDateStr = idx > 0 ? new Date(messages[idx-1].timestamp).toDateString() : null;
+                        const currentMsgDate = msg.timestamp ? new Date(msg.timestamp) : new Date();
+                        const currentDateStr = currentMsgDate.toDateString();
+
+                        const prevMsgDate = idx > 0 ? (messages[idx - 1].timestamp ? new Date(messages[idx - 1].timestamp) : new Date()) : null;
+                        const prevDateStr = prevMsgDate ? prevMsgDate.toDateString() : null;
+
                         const showDivider = currentDateStr !== prevDateStr;
 
                         return (
                             <div key={idx} className="flex flex-col w-full">
                                 {showDivider && (
-                                    <div className="flex justify-center my-6 animate-fade-in-up">
-                                        <span className="bg-white/5 backdrop-blur-md border border-white/10 text-slate-400 text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest font-semibold shadow-sm">
-                                            {formatMessageDate(msg.timestamp)}
+                                    <div className="flex justify-center my-6 animate-fade-in-up w-full">
+                                        <span className="bg-white/5 backdrop-blur-md border border-white/10 text-slate-400 text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest font-semibold shadow-sm text-center">
+                                            {formatMessageDate(currentMsgDate)}
                                         </span>
                                     </div>
                                 )}

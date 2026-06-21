@@ -32,6 +32,7 @@ type HistoryMessage struct {
     Type      string `json:"type"`
     SenderID  string `json:"sender_id"`
     IsMine    bool   `json:"isMine"`
+    Timestamp string `json:"timestamp"`
 }
 
 type Room struct {
@@ -247,6 +248,7 @@ func GetMessagesHandler(w http.ResponseWriter, r *http.Request) {
             Type:      "MESSAGE",
             SenderID:  em.SenderID,
             IsMine:    em.SenderID == claims.SessionID,
+            Timestamp: em.Timestamp.Format(time.RFC3339),
         })
     }
 
