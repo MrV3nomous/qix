@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { importKey, encryptMessage, decryptMessage } from '../utils/crypto';
 import { getVault, saveVault, destroyVault } from '../utils/vaultManager';
-import { CHAT_THEMES } from '../pages/Home';
+import { CHAT_THEMES } from '../utils/themes';
 
 export default function Chat() {
     const { roomId } = useParams();
@@ -18,14 +18,26 @@ export default function Chat() {
     const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
     const [vaultName, setVaultName] = useState('Secure Vault');
     const [currentTheme, setCurrentTheme] = useState('aurora');
-    const [showThemePicker, setShowThemePicker] = useState(false);
 
+    // NEW: Theme Picker UI State
+    const [showThemePicker, setShowThemePicker] = useState(false);
+    const [activeTag, setActiveTag] = useState('All');
     const [isObfuscated, setIsObfuscated] = useState(false);
 
     const ws = useRef(null);
     const messagesEndRef = useRef(null);
     const cryptoKeyRef = useRef(null);
     const intentionalClose = useRef(false);
+
+    // Extract all unique tags dynamically from the CHAT_THEMES object
+    const allTags = Array.from(new Set(
+        Object.values(CHAT_THEMES).flatMap(t => t.tags || [])
+    )).sort();
+
+    // Filter themes based on the selected tag
+    const filteredThemes = activeTag === 'All'
+        ? Object.values(CHAT_THEMES)
+        : Object.values(CHAT_THEMES).filter(t => t.tags?.includes(activeTag));
 
     useEffect(() => {
         const html = document.documentElement;
@@ -405,15 +417,15 @@ export default function Chat() {
                     background: transparent;
                 }
                 .sleek-scroll::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.1);
+                    background: rgba(255, 255, 255, 0.15);
                     border-radius: 10px;
                 }
                 .sleek-scroll::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.2);
+                    background: rgba(255, 255, 255, 0.3);
                 }
                 .sleek-scroll {
                     scrollbar-width: thin;
-                    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+                    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
                 }
             `}</style>
 
@@ -424,11 +436,83 @@ export default function Chat() {
 
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[#020617]">
                 <div
-                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out opacity-40 mix-blend-screen"
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out opacity-80"
                     style={{ backgroundImage: `url('${CHAT_THEMES[currentTheme]?.bg}')` }}
                 ></div>
-                <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/80 via-[#020617]/60 to-[#020617]/95"></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/40 via-[#020617]/60 to-[#020617]/90"></div>
             </div>
+
+            {showThemePicker && (
+                <div className="absolute inset-0 z-[100] flex flex-col bg-[#020617]/80 backdrop-blur-3xl animate-fade-in">
+
+                    <div className="shrink-0 px-5 py-4 flex items-center justify-between border-b border-white/10 bg-black/20">
+                        <h2 className="text-xl font-bold text-white tracking-wide">Select Theme</h2>
+                        <button
+                            onClick={() => setShowThemePicker(false)}
+                            className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 transition-colors"
+                            title="Close"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div className="shrink-0 border-b border-white/5 bg-black/20">
+                        <div className="flex overflow-x-auto px-4 py-3 gap-2 sleek-scroll">
+                            {['All', ...allTags].map(tag => (
+                                <button
+                                    key={tag}
+                                    onClick={() => setActiveTag(tag)}
+                                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 shadow-sm border ${activeTag === tag
+                                            ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                                        }`}
+                                >
+                                    {tag.charAt(0).toUpperCase() + tag.slice(1)}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto px-4 py-6 sleek-scroll">
+                        <div className="w-full max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
+                            {filteredThemes.map(t => (
+                                <div
+                                    key={t.id}
+                                    onClick={() => changeTheme(t.id)}
+                                    className={`relative w-full aspect-[9/16] sm:aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer group shadow-xl transition-all duration-300 ${currentTheme === t.id
+                                            ? 'ring-2 ring-emerald-400 scale-[0.98]'
+                                            : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
+                                        }`}
+                                >
+                                    <img
+                                        src={t.bg}
+                                        alt={t.name}
+                                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                                        loading="lazy"
+                                    />
+
+                                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+
+                                    {currentTheme === t.id && (
+                                        <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1 rounded-full shadow-lg backdrop-blur-md">
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                            </svg>
+                                        </div>
+                                    )}
+
+                                    <div className="absolute bottom-0 left-0 w-full p-3 flex flex-col gap-1.5">
+                                        <span className="text-white text-sm font-semibold truncate drop-shadow-md">{t.name}</span>
+                                        <div className={`h-1.5 w-full rounded-full bg-gradient-to-r ${t.bubbles} shadow-inner opacity-90`} />
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className={`shrink-0 bg-black/30 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative transition-all duration-300 ${isObfuscated ? 'blur-sm' : ''}`}>
                 <div className="flex items-center gap-2 sm:gap-4">
@@ -463,35 +547,16 @@ export default function Chat() {
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 relative">
-
-                    <div className="relative">
-                        <button
-                            onClick={() => setShowThemePicker(!showThemePicker)}
-                            className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${showThemePicker ? 'bg-white/15 border-white/20 text-white' : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'}`}
-                            title="Change Theme"
-                        >
-                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                            </svg>
-                        </button>
-
-                        {showThemePicker && (
-                            <div className="absolute top-14 right-0 bg-[#020617]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 z-50 shadow-2xl flex flex-col gap-1 w-44">
-                                <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest px-3 py-2 border-b border-white/5 mb-1">Room Theme</div>
-                                {Object.values(CHAT_THEMES).map(t => (
-                                    <button
-                                        key={t.id}
-                                        onClick={() => changeTheme(t.id)}
-                                        className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors w-full text-left ${currentTheme === t.id ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-slate-300'}`}
-                                    >
-                                        <div className={`w-3.5 h-3.5 rounded-full bg-gradient-to-br ${t.bubbles} shadow-inner`}></div>
-                                        <span className="text-xs font-medium">{t.name}</span>
-                                    </button>
-                                ))}
-                            </div>
-                        )}
-                    </div>
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                    <button
+                        onClick={() => setShowThemePicker(true)}
+                        className="transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm text-slate-300 hover:text-white flex items-center justify-center"
+                        title="Change Theme"
+                    >
+                        <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                        </svg>
+                    </button>
 
                     <button
                         onClick={copyToClipboard}
@@ -512,6 +577,18 @@ export default function Chat() {
                             </svg>
                         )}
                     </button>
+
+                    {navigator.share && (
+                        <button
+                            onClick={shareLink}
+                            className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center"
+                            title="Share Invite Link"
+                        >
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                            </svg>
+                        </button>
+                    )}
 
                     <button
                         onClick={leaveRoom}
@@ -555,7 +632,7 @@ export default function Chat() {
                                 )}
                                 <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
                                     <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-lg relative group flex flex-col ${msg.isMine
-                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles} text-white rounded-br-sm shadow-xl`
+                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-xl`
                                         : 'bg-black/40 border border-white/10 text-slate-100 rounded-bl-sm backdrop-blur-xl shadow-xl'
                                         }`}>
                                         <span className="break-words">{msg.content}</span>
@@ -595,7 +672,7 @@ export default function Chat() {
                     <button
                         type="submit"
                         disabled={!isConnected || !input.trim()}
-                        className={`text-white font-medium px-4 sm:px-8 py-3 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 disabled:opacity-50 shadow-lg flex justify-center items-center gap-2 shrink-0 bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles} hover:brightness-110`}
+                        className={`text-white font-medium px-4 sm:px-8 py-3 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 disabled:opacity-50 shadow-lg flex justify-center items-center gap-2 shrink-0 bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} hover:brightness-110`}
                     >
                         <span className="hidden sm:inline">Send</span>
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
