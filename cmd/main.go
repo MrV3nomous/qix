@@ -62,9 +62,15 @@ func main() {
 
 	r.With(limitMiddleware).Post("/room", api.CreateRoomHandler)
 	r.With(limitMiddleware).Post("/join", api.JoinRoomHandler)
-
 	r.With(httprate.LimitByIP(30, 1*time.Minute)).Get("/messages", api.GetMessagesHandler)
 	r.With(httprate.LimitByIP(5, 1*time.Minute)).Post("/terminate", api.TerminateRoomHandler)
+
+	r.With(httprate.LimitByIP(15, 1*time.Minute)).Post("/theme", api.UpdateThemeHandler)
+
+	r.Get("/ping", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Alive"))
+	})
 
 	r.HandleFunc("/ws", chat.ServeWS)
 

@@ -52,6 +52,7 @@ export default function Join() {
 
                 saveVault(data.room_id, {
                     room_name: data.room_name,
+                    room_theme: data.room_theme,
                     invite_link: fullInviteLink,
                     e2e_key: encryptionKey,
                     session_id: data.session_id,

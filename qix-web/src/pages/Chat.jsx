@@ -2,7 +2,8 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { importKey, encryptMessage, decryptMessage } from '../utils/crypto';
-import { getVault, destroyVault } from '../utils/vaultManager';
+import { getVault, saveVault, destroyVault } from '../utils/vaultManager';
+import { CHAT_THEMES } from '../pages/Home';
 
 export default function Chat() {
     const { roomId } = useParams();
@@ -16,6 +17,9 @@ export default function Chat() {
 
     const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
     const [vaultName, setVaultName] = useState('Secure Vault');
+    const [currentTheme, setCurrentTheme] = useState('aurora');
+    const [showThemePicker, setShowThemePicker] = useState(false);
+
     const [isObfuscated, setIsObfuscated] = useState(false);
 
     const ws = useRef(null);
@@ -112,6 +116,7 @@ export default function Chat() {
 
         setVaultCreatedAt(vault.createdAt);
         setVaultName(vault.room_name || 'Secure Vault');
+        setCurrentTheme(vault.room_theme || 'aurora');
 
         const { auth_token: authToken, e2e_key: rawKey } = vault;
         let isMounted = true;
@@ -174,6 +179,14 @@ export default function Chat() {
                     alert("The other user has ended the secure session. All data has been shredded.");
                     destroyVault(roomId);
                     navigate('/');
+                    return;
+                }
+
+                if (incomingMsg.type === 'THEME_UPDATE') {
+                    if (isMounted) {
+                        setCurrentTheme(incomingMsg.theme);
+                        saveVault(roomId, { room_theme: incomingMsg.theme });
+                    }
                     return;
                 }
 
@@ -284,6 +297,30 @@ export default function Chat() {
         }
     };
 
+    const changeTheme = async (themeId) => {
+        setCurrentTheme(themeId);
+        setShowThemePicker(false);
+        saveVault(roomId, { room_theme: themeId });
+
+        if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+            ws.current.send(JSON.stringify({ type: 'THEME_UPDATE', theme: themeId }));
+        }
+
+        try {
+            const vault = getVault(roomId);
+            await fetch(`${import.meta.env.VITE_API_URL}/theme`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${vault.auth_token}`
+                },
+                body: JSON.stringify({ theme: themeId })
+            });
+        } catch (e) {
+            console.error("Failed to persist theme to backend", e);
+        }
+    };
+
     const leaveRoom = async () => {
         intentionalClose.current = true;
         if (ws.current && ws.current.readyState === WebSocket.OPEN) {
@@ -385,14 +422,15 @@ export default function Chat() {
                 <p className="mt-4 text-white/30 text-sm tracking-widest uppercase font-semibold">Vault Secured</p>
             </div>
 
-            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
-                <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
-                <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
-                <div className="absolute top-[20%] right-[20%] w-[40vw] h-[40vw] bg-blue-600/15 rounded-full mix-blend-screen filter blur-[100px]"></div>
-                <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noiseFilter%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.85%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noiseFilter)%22/%3E%3C/svg%3E")' }}></div>
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[#020617]">
+                <div
+                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out opacity-40 mix-blend-screen"
+                    style={{ backgroundImage: `url('${CHAT_THEMES[currentTheme]?.bg}')` }}
+                ></div>
+                <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/80 via-[#020617]/60 to-[#020617]/95"></div>
             </div>
 
-            <div className={`shrink-0 bg-black/20 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative transition-all duration-300 ${isObfuscated ? 'blur-sm' : ''}`}>
+            <div className={`shrink-0 bg-black/30 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative transition-all duration-300 ${isObfuscated ? 'blur-sm' : ''}`}>
                 <div className="flex items-center gap-2 sm:gap-4">
                     <button
                         onClick={() => navigate('/')}
@@ -418,14 +456,43 @@ export default function Chat() {
                             {vaultCreatedAt && (
                                 <>
                                     <span className="text-white/20 text-[10px]">•</span>
-                                    <span className="text-[10px] sm:text-xs text-slate-500 font-sans tracking-wide truncate">{formatHeaderDate(vaultCreatedAt)}</span>
+                                    <span className="text-[10px] sm:text-xs text-slate-400 font-sans tracking-wide truncate">{formatHeaderDate(vaultCreatedAt)}</span>
                                 </>
                             )}
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 relative">
+
+                    <div className="relative">
+                        <button
+                            onClick={() => setShowThemePicker(!showThemePicker)}
+                            className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${showThemePicker ? 'bg-white/15 border-white/20 text-white' : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'}`}
+                            title="Change Theme"
+                        >
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+                            </svg>
+                        </button>
+
+                        {showThemePicker && (
+                            <div className="absolute top-14 right-0 bg-[#020617]/95 backdrop-blur-2xl border border-white/10 rounded-2xl p-2 z-50 shadow-2xl flex flex-col gap-1 w-44">
+                                <div className="text-[10px] text-slate-500 font-semibold uppercase tracking-widest px-3 py-2 border-b border-white/5 mb-1">Room Theme</div>
+                                {Object.values(CHAT_THEMES).map(t => (
+                                    <button
+                                        key={t.id}
+                                        onClick={() => changeTheme(t.id)}
+                                        className={`flex items-center gap-3 px-3 py-2 rounded-xl transition-colors w-full text-left ${currentTheme === t.id ? 'bg-white/10 text-white' : 'hover:bg-white/5 text-slate-300'}`}
+                                    >
+                                        <div className={`w-3.5 h-3.5 rounded-full bg-gradient-to-br ${t.bubbles} shadow-inner`}></div>
+                                        <span className="text-xs font-medium">{t.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
                     <button
                         onClick={copyToClipboard}
                         className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${copied
@@ -446,21 +513,9 @@ export default function Chat() {
                         )}
                     </button>
 
-                    {navigator.share && (
-                        <button
-                            onClick={shareLink}
-                            className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center"
-                            title="Share Invite Link"
-                        >
-                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                            </svg>
-                        </button>
-                    )}
-
                     <button
                         onClick={leaveRoom}
-                        className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap"
+                        className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap ml-1"
                         title="End Session"
                     >
                         <svg className="w-4 h-4 sm:w-4 sm:h-4 transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -476,7 +531,7 @@ export default function Chat() {
                     {messages.length === 0 && (
                         <div className="flex-1 flex flex-col items-center justify-center text-slate-500/50 font-light space-y-4 my-auto py-10">
                             <Logo className="w-12 h-12 sm:w-16 sm:h-16 opacity-20 grayscale" />
-                            <p className="text-sm sm:text-base text-center px-4">This room is secured. Awaiting transmission.</p>
+                            <p className="text-sm sm:text-base text-center px-4 drop-shadow-md">This room is secured. Awaiting transmission.</p>
                         </div>
                     )}
 
@@ -493,19 +548,19 @@ export default function Chat() {
                             <div key={idx} className="flex flex-col w-full">
                                 {showDivider && (
                                     <div className="flex justify-center my-6 animate-fade-in-up w-full">
-                                        <span className="bg-white/5 backdrop-blur-md border border-white/10 text-slate-400 text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest font-semibold shadow-sm text-center">
+                                        <span className="bg-black/40 backdrop-blur-xl border border-white/10 text-slate-300 text-[10px] px-4 py-1.5 rounded-full uppercase tracking-widest font-semibold shadow-xl text-center">
                                             {formatMessageDate(currentMsgDate)}
                                         </span>
                                     </div>
                                 )}
                                 <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                                    <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-sm relative group flex flex-col ${msg.isMine
-                                        ? 'bg-gradient-to-br from-blue-600 to-violet-600 text-white rounded-br-sm shadow-[0_4px_20px_-5px_rgba(124,58,237,0.4)]'
-                                        : 'bg-white/10 border border-white/5 text-slate-200 rounded-bl-sm backdrop-blur-md'
+                                    <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-lg relative group flex flex-col ${msg.isMine
+                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles} text-white rounded-br-sm shadow-xl`
+                                        : 'bg-black/40 border border-white/10 text-slate-100 rounded-bl-sm backdrop-blur-xl shadow-xl'
                                         }`}>
                                         <span className="break-words">{msg.content}</span>
 
-                                        <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-blue-200' : 'text-slate-400'}`}>
+                                        <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-white/70' : 'text-slate-400'}`}>
                                             <span>
                                                 {msg.timestamp
                                                     ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
@@ -526,7 +581,7 @@ export default function Chat() {
                 </div>
             </div>
 
-            <form onSubmit={sendMessage} className={`shrink-0 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/20 border-t border-white/5 backdrop-blur-md relative z-20 transition-all duration-300 ${isObfuscated ? 'blur-sm opacity-50' : ''}`}>
+            <form onSubmit={sendMessage} className={`shrink-0 p-3 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-6 bg-black/30 border-t border-white/5 backdrop-blur-xl relative z-20 transition-all duration-300 ${isObfuscated ? 'blur-sm opacity-50' : ''}`}>
                 <div className="flex gap-2 sm:gap-3 w-full max-w-6xl mx-auto">
                     <input
                         type="text"
@@ -535,12 +590,12 @@ export default function Chat() {
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Type an ephemeral message..."
                         disabled={!isConnected}
-                        className="flex-1 bg-black/40 text-slate-200 placeholder:text-slate-500 text-[16px] px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 focus:bg-black/60 transition-all duration-300 disabled:opacity-50 shadow-inner"
+                        className="flex-1 bg-black/50 text-slate-100 placeholder:text-slate-500 text-[16px] px-4 sm:px-6 py-3 sm:py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-white/20 focus:bg-black/70 transition-all duration-300 disabled:opacity-50 shadow-inner"
                     />
                     <button
                         type="submit"
                         disabled={!isConnected || !input.trim()}
-                        className="bg-white/10 hover:bg-white/20 text-white font-medium px-4 sm:px-8 py-3 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 hover:border-white/20 disabled:opacity-50 shadow-sm flex justify-center items-center gap-2 shrink-0"
+                        className={`text-white font-medium px-4 sm:px-8 py-3 sm:py-4 rounded-2xl transition-all duration-300 border border-white/10 disabled:opacity-50 shadow-lg flex justify-center items-center gap-2 shrink-0 bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles} hover:brightness-110`}
                     >
                         <span className="hidden sm:inline">Send</span>
                         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
