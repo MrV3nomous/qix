@@ -52,6 +52,7 @@ export default function Chat() {
     const [currentTheme, setCurrentTheme] = useState(() => {
         const vault = getVault(roomId);
         if (vault && vault.room_theme) return vault.room_theme;
+
         const themeKeys = Object.keys(CHAT_THEMES);
         return themeKeys[Math.floor(Math.random() * themeKeys.length)];
     });
@@ -169,6 +170,7 @@ export default function Chat() {
 
         const { auth_token: authToken, e2e_key: rawKey } = vault;
         let isMounted = true;
+        let reconnectTimer = null;
 
         const fetchHistory = async () => {
             try {
@@ -178,7 +180,6 @@ export default function Chat() {
 
                 if (response.ok) {
                     const encryptedHistory = await response.json();
-
                     const decryptedHistory = [];
                     for (const msg of encryptedHistory) {
                         try {
@@ -208,23 +209,30 @@ export default function Chat() {
         const connectWebSocket = () => {
             if (intentionalClose.current || !isMounted) return;
 
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+
             if (ws.current) {
+                ws.current.onclose = null; 
                 clearInterval(ws.current.pingInterval);
-                ws.current.close();
+                if (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING) {
+                    ws.current.close();
+                }
             }
 
             const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}?token=${authToken}`);
+            ws.current = socket;
 
             socket.onopen = () => {
-                if (isMounted) {
-                    setIsConnected(true);
-                    fetchHistory();
-                    socket.pingInterval = setInterval(() => {
-                        if (socket.readyState === WebSocket.OPEN) {
-                            socket.send(JSON.stringify({ type: 'PING' }));
-                        }
-                    }, 30000);
-                }
+                if (!isMounted) return;
+                setIsConnected(true);
+                fetchHistory();
+
+                socket.pingInterval = setInterval(() => {
+                    if (socket.readyState === WebSocket.OPEN) {
+                        socket.send(JSON.stringify({ type: 'PING' }));
+                    }
+                    fetch(`${import.meta.env.VITE_API_URL}/ping`).catch(() => {});
+                }, 20000); 
             };
 
             socket.onmessage = async (event) => {
@@ -255,7 +263,6 @@ export default function Chat() {
                 if (incomingMsg.type === 'MESSAGE') {
                     try {
                         const plainText = await decryptMessage(incomingMsg.content, incomingMsg.iv, cryptoKeyRef.current);
-
                         setMessages((prev) => {
                             if (prev.some(m => m.message_id === incomingMsg.message_id)) return prev;
                             return [...prev, { ...incomingMsg, content: plainText, isMine: false }];
@@ -272,20 +279,18 @@ export default function Chat() {
             };
 
             socket.onclose = () => {
-                clearInterval(socket.pingInterval);
-                if (isMounted) {
+                if (ws.current === socket) {
+                    clearInterval(socket.pingInterval);
+                }
+                if (isMounted && !intentionalClose.current) {
                     setIsConnected(false);
-                    if (!intentionalClose.current) {
-                        setTimeout(connectWebSocket, 2000);
-                    }
+                    reconnectTimer = setTimeout(connectWebSocket, 3000);
                 }
             };
 
             socket.onerror = () => {
                 socket.close();
             };
-
-            ws.current = socket;
         };
 
         const initializeChat = async () => {
@@ -296,7 +301,6 @@ export default function Chat() {
                 navigate('/');
                 return;
             }
-
             await fetchHistory();
             if (isMounted) connectWebSocket();
         };
@@ -317,8 +321,10 @@ export default function Chat() {
         return () => {
             isMounted = false;
             intentionalClose.current = true;
+            if (reconnectTimer) clearTimeout(reconnectTimer);
             if (ws.current) {
                 clearInterval(ws.current.pingInterval);
+                ws.current.onclose = null;
                 ws.current.close();
             }
             document.removeEventListener("visibilitychange", handleVisibilityChange);
@@ -418,7 +424,7 @@ export default function Chat() {
             try {
                 await navigator.share({
                     title: "Qix - Let's talk something private.",
-                    text: 'Join my private, self-destructing secure vault:',
+                    text: 'Join my private, self-destructing secure vault. No signup. No digital trail.',
                     url: getInviteLink(),
                 });
             } catch (err) {
@@ -511,8 +517,8 @@ export default function Chat() {
                                     key={tag}
                                     onClick={() => setActiveTag(tag)}
                                     className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 shadow-sm border ${activeTag === tag
-                                        ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                        : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                                            ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
                                         }`}
                                 >
                                     {tag.charAt(0).toUpperCase() + tag.slice(1)}
@@ -528,8 +534,8 @@ export default function Chat() {
                                     key={t.id}
                                     onClick={() => changeTheme(t.id)}
                                     className={`relative w-full aspect-[9/16] sm:aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer group shadow-xl transition-all duration-300 ${currentTheme === t.id
-                                        ? 'ring-2 ring-emerald-400 scale-[0.98]'
-                                        : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
+                                            ? 'ring-2 ring-emerald-400 scale-[0.98]'
+                                            : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
                                         }`}
                                 >
                                     <img
@@ -677,8 +683,8 @@ export default function Chat() {
                                 )}
                                 <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
                                     <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed relative group flex flex-col ${msg.isMine
-                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/20 backdrop-blur-xl`
-                                        : 'bg-[#ffffff0f] text-slate-100 rounded-bl-sm backdrop-blur-3xl shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/10'
+                                            ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/20 backdrop-blur-xl`
+                                            : 'bg-[#ffffff0f] text-slate-100 rounded-bl-sm backdrop-blur-3xl shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/10'
                                         }`}>
                                         <span className="break-words">{msg.content}</span>
 

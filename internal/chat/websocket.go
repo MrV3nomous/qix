@@ -21,6 +21,7 @@ var upgrader = websocket.Upgrader{
 
 		allowedOrigins := []string{
 			"https://qix-six.vercel.app",
+			"http://localhost:5173",
 		}
 
 		for _, allowed := range allowedOrigins {
@@ -29,7 +30,7 @@ var upgrader = websocket.Upgrader{
 			}
 		}
 
-		log.Printf("⚠️ SECURITY: Blocked WS connection from unauthorized origin: %s", origin)
+		log.Printf("SECURITY: Blocked WS connection from unauthorized origin: %s", origin)
 		return false
 	},
 }
@@ -53,6 +54,7 @@ type IncomingMessage struct {
 	IV        string `json:"iv"`
 	MessageID string `json:"message_id"`
 	SenderID  string `json:"sender_id,omitempty"`
+	Theme     string `json:"theme,omitempty"`
 }
 
 type DBMessage struct {
@@ -95,7 +97,6 @@ func ServeWS(w http.ResponseWriter, r *http.Request) {
 	GlobalHub.Register(client)
 	log.Printf("User %s joined room %s", claims.SessionID, claims.RoomID)
 
-	// Safe Redis message playback
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -174,6 +175,8 @@ func (c *Client) readPump() {
 			break
 		}
 
+		c.Conn.SetReadDeadline(time.Now().Add(pongWait))
+
 		go c.handleIncomingMessage(payload)
 	}
 }
@@ -182,6 +185,10 @@ func (c *Client) handleIncomingMessage(payload []byte) {
 	var msg IncomingMessage
 	if err := json.Unmarshal(payload, &msg); err != nil {
 		log.Printf("Malformed message payload unmarshal failure: %v", err)
+		return
+	}
+
+	if msg.Type == "PING" {
 		return
 	}
 
@@ -201,6 +208,9 @@ func (c *Client) handleIncomingMessage(payload []byte) {
 		); err != nil {
 			log.Printf("Failed to terminate room %s: %v", c.Claims.RoomID, err)
 		}
+		GlobalHub.BroadcastToRoom(c.Claims.RoomID, c.Claims.SessionID, payload)
+
+	case "THEME_UPDATE":
 		GlobalHub.BroadcastToRoom(c.Claims.RoomID, c.Claims.SessionID, payload)
 
 	case "MESSAGE":
@@ -228,6 +238,8 @@ func (c *Client) handleIncomingMessage(payload []byte) {
 		enrichedPayload, _ := json.Marshal(msg)
 
 		database.RedisClient.HSet(ctx, "buffer:"+c.Claims.RoomID, msg.MessageID, enrichedPayload)
+		database.RedisClient.Expire(ctx, "buffer:"+c.Claims.RoomID, 24*time.Hour)
+
 		GlobalHub.BroadcastToRoom(c.Claims.RoomID, c.Claims.SessionID, enrichedPayload)
 	}
 }
