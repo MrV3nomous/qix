@@ -19,21 +19,18 @@ const MessageStatus = ({ isRead }) => {
         }
     }, [stage, isRead]);
 
-    const stages = [
-        { icon: <><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></>, label: 'Typed' },
-        { icon: <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>, label: 'Compiled' },
-        { icon: <><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></>, label: 'Encrypted' },
-        { icon: <><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></>, label: 'Sent' },
-        { icon: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>, label: 'Locked' }
+    const icons = [
+        <><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></>,
+        <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>,
+        <><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></>,
+        <><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></>,
+        <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>
     ];
 
     return (
-        <div className="flex items-center gap-1 overflow-hidden ml-2 opacity-80" key={stages[stage].label}>
-            <span className="text-[8px] font-bold tracking-widest uppercase animate-fade-in drop-shadow-md">
-                {stages[stage].label}
-            </span>
-            <svg className="w-3 h-3 animate-fade-in drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                {stages[stage].icon}
+        <div className="flex items-center overflow-hidden ml-1.5 opacity-90" key={stage}>
+            <svg className="w-3.5 h-3.5 animate-fade-in drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                {icons[stage]}
             </svg>
         </div>
     );
@@ -165,6 +162,10 @@ export default function Chat() {
 
         setVaultCreatedAt(vault.createdAt);
         setVaultName(vault.room_name || 'Secure Vault');
+
+        if (!vault.room_theme) {
+            saveVault(roomId, { room_theme: currentTheme });
+        }
 
         const { auth_token: authToken, e2e_key: rawKey } = vault;
         let isMounted = true;
@@ -500,8 +501,8 @@ export default function Chat() {
                                     key={tag}
                                     onClick={() => setActiveTag(tag)}
                                     className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 shadow-sm border ${activeTag === tag
-                                        ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                        : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                                            ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
                                         }`}
                                 >
                                     {tag.charAt(0).toUpperCase() + tag.slice(1)}
@@ -517,8 +518,8 @@ export default function Chat() {
                                     key={t.id}
                                     onClick={() => changeTheme(t.id)}
                                     className={`relative w-full aspect-[9/16] sm:aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer group shadow-xl transition-all duration-300 ${currentTheme === t.id
-                                        ? 'ring-2 ring-emerald-400 scale-[0.98]'
-                                        : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
+                                            ? 'ring-2 ring-emerald-400 scale-[0.98]'
+                                            : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
                                         }`}
                                 >
                                     <img
@@ -665,9 +666,10 @@ export default function Chat() {
                                     </div>
                                 )}
                                 <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
+                                    
                                     <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed relative group flex flex-col ${msg.isMine
-                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_32px_-4px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] border border-white/20 backdrop-blur-xl`
-                                        : 'bg-black/40 text-slate-100 rounded-bl-sm backdrop-blur-2xl shadow-[0_8px_32px_-4px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)] border border-white/10'
+                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/20 backdrop-blur-xl`
+                                        : 'bg-[#ffffff0f] text-slate-100 rounded-bl-sm backdrop-blur-3xl shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/10'
                                         }`}>
                                         <span className="break-words">{msg.content}</span>
 
@@ -677,9 +679,9 @@ export default function Chat() {
                                                     ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                     : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-
+                                            
                                             {msg.isMine && <MessageStatus isRead={msg.isRead} />}
-
+                                            
                                         </div>
                                     </div>
                                 </div>
