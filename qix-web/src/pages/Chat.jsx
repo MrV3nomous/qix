@@ -47,6 +47,8 @@ export default function Chat() {
 
     const [viewportConfig, setViewportConfig] = useState({ height: window.innerHeight, top: 0 });
 
+    const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
+    const [vaultName, setVaultName] = useState('Secure Vault');
     const [vaultData, setVaultData] = useState(null);
 
     const [currentTheme, setCurrentTheme] = useState(() => {
@@ -178,6 +180,8 @@ export default function Chat() {
         }
 
         setVaultData(vault);
+        setVaultCreatedAt(vault.createdAt);
+        setVaultName(vault.room_name || 'Secure Vault');
 
         if (!vault.room_theme) {
             saveVault(roomId, { room_theme: currentTheme });
@@ -588,7 +592,7 @@ export default function Chat() {
                     </button>
                     {navigator.share && (
                         <button onClick={shareLink} className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center" title="Share Invite Link">
-                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
                     )}
                     <button onClick={leaveRoom} className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap ml-1" title="End Session">
