@@ -51,7 +51,13 @@ export default function Chat() {
 
     const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
     const [vaultName, setVaultName] = useState('Secure Vault');
-    const [currentTheme, setCurrentTheme] = useState('aurora');
+
+    const [currentTheme, setCurrentTheme] = useState(() => {
+        const vault = getVault(roomId);
+        if (vault && vault.room_theme) return vault.room_theme;
+        const themeKeys = Object.keys(CHAT_THEMES);
+        return themeKeys[Math.floor(Math.random() * themeKeys.length)];
+    });
 
     const [showThemePicker, setShowThemePicker] = useState(false);
     const [activeTag, setActiveTag] = useState('All');
@@ -159,7 +165,6 @@ export default function Chat() {
 
         setVaultCreatedAt(vault.createdAt);
         setVaultName(vault.room_name || 'Secure Vault');
-        setCurrentTheme(vault.room_theme || 'aurora');
 
         const { auth_token: authToken, e2e_key: rawKey } = vault;
         let isMounted = true;
@@ -467,7 +472,7 @@ export default function Chat() {
 
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[#020617]">
                 <div
-                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out opacity-80 mix-blend-screen"
+                    className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out opacity-80 mix-blend-screen"
                     style={{ backgroundImage: `url('${CHAT_THEMES[currentTheme]?.bg}')` }}
                 ></div>
                 <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/40 via-[#020617]/60 to-[#020617]/90"></div>
@@ -495,8 +500,8 @@ export default function Chat() {
                                     key={tag}
                                     onClick={() => setActiveTag(tag)}
                                     className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 shadow-sm border ${activeTag === tag
-                                            ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                                        : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
                                         }`}
                                 >
                                     {tag.charAt(0).toUpperCase() + tag.slice(1)}
@@ -512,8 +517,8 @@ export default function Chat() {
                                     key={t.id}
                                     onClick={() => changeTheme(t.id)}
                                     className={`relative w-full aspect-[9/16] sm:aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer group shadow-xl transition-all duration-300 ${currentTheme === t.id
-                                            ? 'ring-2 ring-emerald-400 scale-[0.98]'
-                                            : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
+                                        ? 'ring-2 ring-emerald-400 scale-[0.98]'
+                                        : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
                                         }`}
                                 >
                                     <img
@@ -660,7 +665,6 @@ export default function Chat() {
                                     </div>
                                 )}
                                 <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-
                                     <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed relative group flex flex-col ${msg.isMine
                                         ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_32px_-4px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] border border-white/20 backdrop-blur-xl`
                                         : 'bg-black/40 text-slate-100 rounded-bl-sm backdrop-blur-2xl shadow-[0_8px_32px_-4px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)] border border-white/10'

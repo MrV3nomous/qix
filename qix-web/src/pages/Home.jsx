@@ -3,15 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { generateKey, exportKey } from '../utils/crypto';
 import { getAllVaults, saveVault, destroyAllVaults, destroyVault } from '../utils/vaultManager';
-
-export const CHAT_THEMES = {
-    aurora: { id: 'aurora', name: 'Aurora', bg: 'https://images.unsplash.com/photo-1531366936337-7785c64a5c53?auto=format&fit=crop&w=1920&q=80', bubbles: 'from-blue-600 to-violet-600' },
-    ocean: { id: 'ocean', name: 'Deep Ocean', bg: 'https://images.unsplash.com/photo-1551244072-5d12893278ab?auto=format&fit=crop&w=1920&q=80', bubbles: 'from-cyan-600 to-blue-700' },
-    forest: { id: 'forest', name: 'Emerald Canopy', bg: 'https://images.unsplash.com/photo-1542273917363-3b1817f69a5d?auto=format&fit=crop&w=1920&q=80', bubbles: 'from-emerald-600 to-teal-700' },
-    sunset: { id: 'sunset', name: 'Crimson Sunset', bg: 'https://images.unsplash.com/photo-1505228395891-9a51e7e828fc?auto=format&fit=crop&w=1920&q=80', bubbles: 'from-orange-500 to-rose-600' },
-    nebula: { id: 'nebula', name: 'Nebula', bg: 'https://images.unsplash.com/photo-1462331940025-496dfbfc7564?auto=format&fit=crop&w=1920&q=80', bubbles: 'from-fuchsia-600 to-purple-700' },
-    monochrome: { id: 'monochrome', name: 'Monochrome', bg: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=1920&q=80', bubbles: 'from-slate-600 to-slate-800' }
-};
+import { CHAT_THEMES } from '../utils/themes';
 
 export default function Home() {
     const [isLoading, setIsLoading] = useState(false);
@@ -275,11 +267,11 @@ export default function Home() {
                                     Enter the Chat Room
                                     <span className="transform group-hover/btn:translate-x-1 transition-transform">→</span>
                                 </button>
-
+                                
                                 <button
                                     onClick={() => {
                                         setInviteData(null);
-                                        setVaults(getAllVaults());
+                                        setVaults(getAllVaults()); 
                                     }}
                                     className="w-full text-slate-500 hover:text-slate-300 pt-2 text-sm font-medium transition-colors flex justify-center items-center gap-2"
                                 >
