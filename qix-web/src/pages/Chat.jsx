@@ -5,6 +5,40 @@ import { importKey, encryptMessage, decryptMessage } from '../utils/crypto';
 import { getVault, saveVault, destroyVault } from '../utils/vaultManager';
 import { CHAT_THEMES } from '../utils/themes';
 
+const MessageStatus = ({ isRead }) => {
+    const [stage, setStage] = useState(0);
+
+    useEffect(() => {
+        if (isRead) {
+            setStage(4);
+            return;
+        }
+        if (stage < 3) {
+            const timer = setTimeout(() => setStage(prev => prev + 1), 350);
+            return () => clearTimeout(timer);
+        }
+    }, [stage, isRead]);
+
+    const stages = [
+        { icon: <><path d="M12 20h9" /><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" /></>, label: 'Typed' },
+        { icon: <><polyline points="16 18 22 12 16 6" /><polyline points="8 6 2 12 8 18" /></>, label: 'Compiled' },
+        { icon: <><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" /></>, label: 'Encrypted' },
+        { icon: <><line x1="22" y1="2" x2="11" y2="13" /><polygon points="22 2 15 22 11 13 2 9 22 2" /></>, label: 'Sent' },
+        { icon: <><rect x="3" y="11" width="18" height="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></>, label: 'Locked' }
+    ];
+
+    return (
+        <div className="flex items-center gap-1 overflow-hidden ml-2 opacity-80" key={stages[stage].label}>
+            <span className="text-[8px] font-bold tracking-widest uppercase animate-fade-in drop-shadow-md">
+                {stages[stage].label}
+            </span>
+            <svg className="w-3 h-3 animate-fade-in drop-shadow-md" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                {stages[stage].icon}
+            </svg>
+        </div>
+    );
+};
+
 export default function Chat() {
     const { roomId } = useParams();
     const navigate = useNavigate();
@@ -19,7 +53,6 @@ export default function Chat() {
     const [vaultName, setVaultName] = useState('Secure Vault');
     const [currentTheme, setCurrentTheme] = useState('aurora');
 
-    // NEW: Theme Picker UI State
     const [showThemePicker, setShowThemePicker] = useState(false);
     const [activeTag, setActiveTag] = useState('All');
     const [isObfuscated, setIsObfuscated] = useState(false);
@@ -29,12 +62,10 @@ export default function Chat() {
     const cryptoKeyRef = useRef(null);
     const intentionalClose = useRef(false);
 
-    // Extract all unique tags dynamically from the CHAT_THEMES object
     const allTags = Array.from(new Set(
         Object.values(CHAT_THEMES).flatMap(t => t.tags || [])
     )).sort();
 
-    // Filter themes based on the selected tag
     const filteredThemes = activeTag === 'All'
         ? Object.values(CHAT_THEMES)
         : Object.values(CHAT_THEMES).filter(t => t.tags?.includes(activeTag));
@@ -417,15 +448,15 @@ export default function Chat() {
                     background: transparent;
                 }
                 .sleek-scroll::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.15);
+                    background: rgba(255, 255, 255, 0.1);
                     border-radius: 10px;
                 }
                 .sleek-scroll::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.3);
+                    background: rgba(255, 255, 255, 0.2);
                 }
                 .sleek-scroll {
                     scrollbar-width: thin;
-                    scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+                    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
                 }
             `}</style>
 
@@ -436,7 +467,7 @@ export default function Chat() {
 
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[#020617]">
                 <div
-                    className="absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out opacity-80"
+                    className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000 ease-in-out opacity-80 mix-blend-screen"
                     style={{ backgroundImage: `url('${CHAT_THEMES[currentTheme]?.bg}')` }}
                 ></div>
                 <div className="absolute inset-0 bg-gradient-to-b from-[#020617]/40 via-[#020617]/60 to-[#020617]/90"></div>
@@ -444,7 +475,6 @@ export default function Chat() {
 
             {showThemePicker && (
                 <div className="absolute inset-0 z-[100] flex flex-col bg-[#020617]/80 backdrop-blur-3xl animate-fade-in">
-
                     <div className="shrink-0 px-5 py-4 flex items-center justify-between border-b border-white/10 bg-black/20">
                         <h2 className="text-xl font-bold text-white tracking-wide">Select Theme</h2>
                         <button
@@ -492,7 +522,6 @@ export default function Chat() {
                                         className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                                         loading="lazy"
                                     />
-
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
 
                                     {currentTheme === t.id && (
@@ -631,23 +660,22 @@ export default function Chat() {
                                     </div>
                                 )}
                                 <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                                    <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed shadow-lg relative group flex flex-col ${msg.isMine
-                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-xl`
-                                        : 'bg-black/40 border border-white/10 text-slate-100 rounded-bl-sm backdrop-blur-xl shadow-xl'
+
+                                    <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed relative group flex flex-col ${msg.isMine
+                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_32px_-4px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] border border-white/20 backdrop-blur-xl`
+                                        : 'bg-black/40 text-slate-100 rounded-bl-sm backdrop-blur-2xl shadow-[0_8px_32px_-4px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.1)] border border-white/10'
                                         }`}>
                                         <span className="break-words">{msg.content}</span>
 
-                                        <div className={`text-[10px] mt-1 flex items-center justify-end gap-1 ${msg.isMine ? 'text-white/70' : 'text-slate-400'}`}>
-                                            <span>
+                                        <div className={`text-[10px] mt-1.5 flex items-center justify-end gap-1 ${msg.isMine ? 'text-white/80' : 'text-slate-400'}`}>
+                                            <span className="drop-shadow-md">
                                                 {msg.timestamp
                                                     ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                     : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-                                            {msg.isMine && (
-                                                <span className="ml-1 tracking-tighter">
-                                                    {msg.isRead ? '✓✓' : '✓'}
-                                                </span>
-                                            )}
+
+                                            {msg.isMine && <MessageStatus isRead={msg.isRead} />}
+
                                         </div>
                                     </div>
                                 </div>
