@@ -16,7 +16,6 @@ type QixClaims struct {
 	jwt.RegisteredClaims
 }
 
-
 func GetSigningKey(kid string) ([]byte, error) {
 	var envVar string
 	switch kid {
@@ -46,7 +45,7 @@ func GenerateSessionToken(roomID, sessionID, role, kid string) (string, error) {
 		SessionID: sessionID,
 		Role:      role,
 		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(5 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(48 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 		},
@@ -57,7 +56,6 @@ func GenerateSessionToken(roomID, sessionID, role, kid string) (string, error) {
 
 	return token.SignedString(signingKey)
 }
-
 
 func GenerateInviteToken(roomID, inviteID, kid string) (string, error) {
 	signingKey, err := GetSigningKey(kid)
@@ -70,7 +68,7 @@ func GenerateInviteToken(roomID, inviteID, kid string) (string, error) {
 		Role:   "guest_invite",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ID:        inviteID,
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(15 * time.Minute)),
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(48 * time.Hour)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 		},
 	}
