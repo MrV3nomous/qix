@@ -47,7 +47,6 @@ func (h *Hub) BroadcastToRoom(roomID string, senderSessionID string, message []b
 				select {
 				case client.Send <- message:
 				default:
-					close(client.Send)
 					delete(room, sessionID)
 				}
 			}

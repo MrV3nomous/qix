@@ -16,7 +16,22 @@ import (
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  8192,
 	WriteBufferSize: 8192,
-	CheckOrigin:     func(r *http.Request) bool { return true },
+	CheckOrigin: func(r *http.Request) bool {
+		origin := r.Header.Get("Origin")
+
+		allowedOrigins := []string{
+			"https://qix-six.vercel.app",
+		}
+
+		for _, allowed := range allowedOrigins {
+			if origin == allowed {
+				return true
+			}
+		}
+
+		log.Printf("⚠️ SECURITY: Blocked WS connection from unauthorized origin: %s", origin)
+		return false
+	},
 }
 
 const (
@@ -29,6 +44,7 @@ type Client struct {
 	Conn   *websocket.Conn
 	Claims *auth.QixClaims
 	Send   chan []byte
+	Closed chan struct{}
 }
 
 type IncomingMessage struct {
@@ -73,11 +89,13 @@ func ServeWS(w http.ResponseWriter, r *http.Request) {
 		Conn:   conn,
 		Claims: claims,
 		Send:   make(chan []byte, 256),
+		Closed: make(chan struct{}),
 	}
 
 	GlobalHub.Register(client)
 	log.Printf("User %s joined room %s", claims.SessionID, claims.RoomID)
 
+	// Safe Redis message playback
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
@@ -85,7 +103,11 @@ func ServeWS(w http.ResponseWriter, r *http.Request) {
 		unacked, err := database.RedisClient.HGetAll(ctx, "buffer:"+claims.RoomID).Result()
 		if err == nil && len(unacked) > 0 {
 			for _, payloadStr := range unacked {
-				client.Send <- []byte(payloadStr)
+				select {
+				case client.Send <- []byte(payloadStr):
+				case <-client.Closed:
+					return
+				}
 			}
 		}
 	}()
@@ -132,6 +154,7 @@ func (c *Client) writePump() {
 func (c *Client) readPump() {
 	defer func() {
 		GlobalHub.Unregister(c)
+		close(c.Closed)
 		c.Conn.Close()
 	}()
 
@@ -150,40 +173,37 @@ func (c *Client) readPump() {
 			}
 			break
 		}
-		c.handleIncomingMessage(payload)
+
+		go c.handleIncomingMessage(payload)
 	}
 }
 
 func (c *Client) handleIncomingMessage(payload []byte) {
 	var msg IncomingMessage
 	if err := json.Unmarshal(payload, &msg); err != nil {
-		log.Printf("Malformed message payload unmarshal failure")
+		log.Printf("Malformed message payload unmarshal failure: %v", err)
 		return
 	}
 
-	if msg.Type == "ACK" {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	switch msg.Type {
+	case "ACK":
 		database.RedisClient.HDel(ctx, "buffer:"+c.Claims.RoomID, msg.MessageID)
 		GlobalHub.BroadcastToRoom(c.Claims.RoomID, c.Claims.SessionID, payload)
-		return
-	}
 
-	if msg.Type == "TERMINATE" {
-		ctxMongo, cancelMongo := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelMongo()
-
-		database.RoomsCollection.UpdateOne(
-			ctxMongo,
+	case "TERMINATE":
+		if _, err := database.RoomsCollection.UpdateOne(
+			ctx,
 			map[string]interface{}{"_id": c.Claims.RoomID},
 			map[string]interface{}{"$set": map[string]interface{}{"terminated": true}},
-		)
-
+		); err != nil {
+			log.Printf("Failed to terminate room %s: %v", c.Claims.RoomID, err)
+		}
 		GlobalHub.BroadcastToRoom(c.Claims.RoomID, c.Claims.SessionID, payload)
-		return
-	}
 
-	if msg.Type == "MESSAGE" {
+	case "MESSAGE":
 		dbMsg := DBMessage{
 			ID:         msg.MessageID,
 			RoomID:     c.Claims.RoomID,
@@ -193,27 +213,21 @@ func (c *Client) handleIncomingMessage(payload []byte) {
 			Timestamp:  time.Now(),
 		}
 
-		ctxMongo, cancelMongo := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelMongo()
-		if _, err := database.MessagesCollection.InsertOne(ctxMongo, dbMsg); err != nil {
+		if _, err := database.MessagesCollection.InsertOne(ctx, dbMsg); err != nil {
+			log.Printf("Failed to save message to MongoDB: %v", err)
 			return
 		}
 
 		database.RoomsCollection.UpdateOne(
-			ctxMongo,
+			ctx,
 			map[string]interface{}{"_id": c.Claims.RoomID},
 			map[string]interface{}{"$set": map[string]interface{}{"lastActiveAt": time.Now()}},
 		)
 
 		msg.SenderID = c.Claims.SessionID
-
 		enrichedPayload, _ := json.Marshal(msg)
 
-		ctxRedis, cancelRedis := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancelRedis()
-
-		database.RedisClient.HSet(ctxRedis, "buffer:"+c.Claims.RoomID, msg.MessageID, enrichedPayload)
-
+		database.RedisClient.HSet(ctx, "buffer:"+c.Claims.RoomID, msg.MessageID, enrichedPayload)
 		GlobalHub.BroadcastToRoom(c.Claims.RoomID, c.Claims.SessionID, enrichedPayload)
 	}
 }

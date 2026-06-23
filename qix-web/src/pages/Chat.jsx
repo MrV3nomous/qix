@@ -209,6 +209,7 @@ export default function Chat() {
             if (intentionalClose.current || !isMounted) return;
 
             if (ws.current) {
+                clearInterval(ws.current.pingInterval);
                 ws.current.close();
             }
 
@@ -218,6 +219,11 @@ export default function Chat() {
                 if (isMounted) {
                     setIsConnected(true);
                     fetchHistory();
+                    socket.pingInterval = setInterval(() => {
+                        if (socket.readyState === WebSocket.OPEN) {
+                            socket.send(JSON.stringify({ type: 'PING' }));
+                        }
+                    }, 30000);
                 }
             };
 
@@ -266,6 +272,7 @@ export default function Chat() {
             };
 
             socket.onclose = () => {
+                clearInterval(socket.pingInterval);
                 if (isMounted) {
                     setIsConnected(false);
                     if (!intentionalClose.current) {
@@ -310,7 +317,10 @@ export default function Chat() {
         return () => {
             isMounted = false;
             intentionalClose.current = true;
-            if (ws.current) ws.current.close();
+            if (ws.current) {
+                clearInterval(ws.current.pingInterval);
+                ws.current.close();
+            }
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
     }, [roomId, navigate]);
@@ -407,8 +417,8 @@ export default function Chat() {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: 'Qix Secure Session',
-                    text: 'Join my private, self-destructing chat room:',
+                    title: "Qix - Let's talk something private.",
+                    text: 'Join my private, self-destructing secure vault:',
                     url: getInviteLink(),
                 });
             } catch (err) {
@@ -501,8 +511,8 @@ export default function Chat() {
                                     key={tag}
                                     onClick={() => setActiveTag(tag)}
                                     className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 shadow-sm border ${activeTag === tag
-                                            ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
+                                        ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
+                                        : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
                                         }`}
                                 >
                                     {tag.charAt(0).toUpperCase() + tag.slice(1)}
@@ -518,8 +528,8 @@ export default function Chat() {
                                     key={t.id}
                                     onClick={() => changeTheme(t.id)}
                                     className={`relative w-full aspect-[9/16] sm:aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer group shadow-xl transition-all duration-300 ${currentTheme === t.id
-                                            ? 'ring-2 ring-emerald-400 scale-[0.98]'
-                                            : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
+                                        ? 'ring-2 ring-emerald-400 scale-[0.98]'
+                                        : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
                                         }`}
                                 >
                                     <img
@@ -666,7 +676,6 @@ export default function Chat() {
                                     </div>
                                 )}
                                 <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                                    
                                     <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed relative group flex flex-col ${msg.isMine
                                         ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/20 backdrop-blur-xl`
                                         : 'bg-[#ffffff0f] text-slate-100 rounded-bl-sm backdrop-blur-3xl shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/10'
@@ -679,9 +688,9 @@ export default function Chat() {
                                                     ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                     : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-                                            
+
                                             {msg.isMine && <MessageStatus isRead={msg.isRead} />}
-                                            
+
                                         </div>
                                     </div>
                                 </div>

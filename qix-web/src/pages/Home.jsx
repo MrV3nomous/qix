@@ -69,8 +69,8 @@ export default function Home() {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: 'Qix Secure Session',
-                    text: 'Join my private, self-destructing chat room:',
+                    title: "Qix - Let's talk something private.",
+                    text: 'Join my private, self-destructing secure vault. No signup. No digital trail.',
                     url: inviteData.invite_link,
                 });
             } catch (err) {
@@ -89,8 +89,8 @@ export default function Home() {
         if (navigator.share) {
             try {
                 await navigator.share({
-                    title: 'Qix Secure Session',
-                    text: 'Join my private, self-destructing chat room:',
+                    title: "Qix - Let's talk something private.",
+                    text: 'Join my private, self-destructing secure vault. No signup. No digital trail.',
                     url: link,
                 });
             } catch (err) {
@@ -267,11 +267,11 @@ export default function Home() {
                                     Enter the Chat Room
                                     <span className="transform group-hover/btn:translate-x-1 transition-transform">→</span>
                                 </button>
-                                
+
                                 <button
                                     onClick={() => {
                                         setInviteData(null);
-                                        setVaults(getAllVaults()); 
+                                        setVaults(getAllVaults());
                                     }}
                                     className="w-full text-slate-500 hover:text-slate-300 pt-2 text-sm font-medium transition-colors flex justify-center items-center gap-2"
                                 >
