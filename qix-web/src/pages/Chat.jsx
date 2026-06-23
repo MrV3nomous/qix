@@ -43,16 +43,15 @@ export default function Chat() {
     const [input, setInput] = useState('');
     const [isConnected, setIsConnected] = useState(false);
     const [copied, setCopied] = useState(false);
+    const [sessionTerminated, setSessionTerminated] = useState(false);
 
     const [viewportConfig, setViewportConfig] = useState({ height: window.innerHeight, top: 0 });
 
-    const [vaultCreatedAt, setVaultCreatedAt] = useState(null);
-    const [vaultName, setVaultName] = useState('Secure Vault');
+    const [vaultData, setVaultData] = useState(null);
 
     const [currentTheme, setCurrentTheme] = useState(() => {
         const vault = getVault(roomId);
         if (vault && vault.room_theme) return vault.room_theme;
-
         const themeKeys = Object.keys(CHAT_THEMES);
         return themeKeys[Math.floor(Math.random() * themeKeys.length)];
     });
@@ -74,6 +73,25 @@ export default function Chat() {
         ? Object.values(CHAT_THEMES)
         : Object.values(CHAT_THEMES).filter(t => t.tags?.includes(activeTag));
 
+    const generateUserIdentity = (senderId) => {
+        if (!senderId) return { name: 'Unknown', color: 'bg-slate-600' };
+
+        const colors = [
+            'bg-rose-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500',
+            'bg-fuchsia-500', 'bg-cyan-500', 'bg-indigo-500', 'bg-violet-500'
+        ];
+
+        let hash = 0;
+        for (let i = 0; i < senderId.length; i++) {
+            hash = senderId.charCodeAt(i) + ((hash << 5) - hash);
+        }
+
+        const colorIndex = Math.abs(hash) % colors.length;
+        const shortId = senderId.substring(senderId.length - 4).toUpperCase();
+
+        return { name: `Agent ${shortId}`, color: colors[colorIndex], initial: shortId.substring(2) };
+    };
+
     useEffect(() => {
         const html = document.documentElement;
         const body = document.body;
@@ -87,7 +105,6 @@ export default function Chat() {
 
         html.style.backgroundColor = '#020617';
         body.style.backgroundColor = '#020617';
-
         body.style.position = 'fixed';
         body.style.overflow = 'hidden';
         body.style.width = '100%';
@@ -138,7 +155,6 @@ export default function Chat() {
         const handleVisibilityChange = () => {
             setIsObfuscated(document.hidden);
         };
-
         const handleBlur = () => setIsObfuscated(true);
         const handleFocus = () => setIsObfuscated(false);
 
@@ -161,8 +177,7 @@ export default function Chat() {
             return;
         }
 
-        setVaultCreatedAt(vault.createdAt);
-        setVaultName(vault.room_name || 'Secure Vault');
+        setVaultData(vault);
 
         if (!vault.room_theme) {
             saveVault(roomId, { room_theme: currentTheme });
@@ -197,9 +212,8 @@ export default function Chat() {
                             return [...decryptedHistory, ...pendingRealtime];
                         });
                     }
-                } else if (response.status === 401) {
-                    destroyVault(roomId);
-                    navigate('/');
+                } else if (response.status === 401 || response.status === 403) {
+                    setSessionTerminated(true);
                 }
             } catch (error) {
                 console.error("Error Fetching History:", error);
@@ -207,17 +221,13 @@ export default function Chat() {
         };
 
         const connectWebSocket = () => {
-            if (intentionalClose.current || !isMounted) return;
+            if (intentionalClose.current || !isMounted || sessionTerminated) return;
+
+            if (ws.current && (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING)) {
+                return;
+            }
 
             if (reconnectTimer) clearTimeout(reconnectTimer);
-
-            if (ws.current) {
-                ws.current.onclose = null; 
-                clearInterval(ws.current.pingInterval);
-                if (ws.current.readyState === WebSocket.OPEN || ws.current.readyState === WebSocket.CONNECTING) {
-                    ws.current.close();
-                }
-            }
 
             const socket = new WebSocket(`${import.meta.env.VITE_WS_URL}?token=${authToken}`);
             ws.current = socket;
@@ -231,17 +241,16 @@ export default function Chat() {
                     if (socket.readyState === WebSocket.OPEN) {
                         socket.send(JSON.stringify({ type: 'PING' }));
                     }
-                    fetch(`${import.meta.env.VITE_API_URL}/ping`).catch(() => {});
-                }, 20000); 
+                    fetch(`${import.meta.env.VITE_API_URL}/ping`).catch(() => { });
+                }, 20000);
             };
 
             socket.onmessage = async (event) => {
                 const incomingMsg = JSON.parse(event.data);
 
                 if (incomingMsg.type === 'TERMINATE') {
-                    alert("The other user has ended the secure session. All data has been shredded.");
+                    setSessionTerminated(true);
                     destroyVault(roomId);
-                    navigate('/');
                     return;
                 }
 
@@ -282,7 +291,7 @@ export default function Chat() {
                 if (ws.current === socket) {
                     clearInterval(socket.pingInterval);
                 }
-                if (isMounted && !intentionalClose.current) {
+                if (isMounted && !intentionalClose.current && !sessionTerminated) {
                     setIsConnected(false);
                     reconnectTimer = setTimeout(connectWebSocket, 3000);
                 }
@@ -302,13 +311,13 @@ export default function Chat() {
                 return;
             }
             await fetchHistory();
-            if (isMounted) connectWebSocket();
+            if (isMounted && !sessionTerminated) connectWebSocket();
         };
 
         initializeChat();
 
         const handleVisibilityChange = () => {
-            if (document.visibilityState === 'visible' && !intentionalClose.current) {
+            if (document.visibilityState === 'visible' && !intentionalClose.current && !sessionTerminated) {
                 if (!ws.current || ws.current.readyState !== WebSocket.OPEN) {
                     connectWebSocket();
                 } else {
@@ -329,7 +338,7 @@ export default function Chat() {
             }
             document.removeEventListener("visibilitychange", handleVisibilityChange);
         };
-    }, [roomId, navigate]);
+    }, [roomId, navigate, sessionTerminated]);
 
     const sendMessage = async (e) => {
         e.preventDefault();
@@ -456,36 +465,40 @@ export default function Chat() {
     return (
         <div
             className="fixed left-0 w-full flex flex-col bg-[#020617] text-slate-200 font-sans overflow-hidden overscroll-none selection:bg-violet-500/30 select-none"
-            style={{
-                height: `${viewportConfig.height}px`,
-                top: `${viewportConfig.top}px`
-            }}
+            style={{ height: `${viewportConfig.height}px`, top: `${viewportConfig.top}px` }}
         >
             <style>{`
-                .sleek-scroll::-webkit-scrollbar {
-                    width: 3px;
-                    height: 3px;
-                }
-                .sleek-scroll::-webkit-scrollbar-track {
-                    background: transparent;
-                }
-                .sleek-scroll::-webkit-scrollbar-thumb {
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 10px;
-                }
-                .sleek-scroll::-webkit-scrollbar-thumb:hover {
-                    background: rgba(255, 255, 255, 0.2);
-                }
-                .sleek-scroll {
-                    scrollbar-width: thin;
-                    scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
-                }
+                .sleek-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
+                .sleek-scroll::-webkit-scrollbar-track { background: transparent; }
+                .sleek-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+                .sleek-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+                .sleek-scroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.1) transparent; }
             `}</style>
 
-            <div className={`absolute inset-0 z-50 bg-[#020617]/80 backdrop-blur-2xl transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center ${isObfuscated ? 'opacity-100' : 'opacity-0'}`}>
+            <div className={`absolute inset-0 z-50 bg-[#020617]/80 backdrop-blur-2xl transition-opacity duration-300 pointer-events-none flex flex-col items-center justify-center ${isObfuscated && !sessionTerminated ? 'opacity-100' : 'opacity-0'}`}>
                 <Logo className="w-16 h-16 opacity-30 grayscale" />
                 <p className="mt-4 text-white/30 text-sm tracking-widest uppercase font-semibold">Vault Secured</p>
             </div>
+
+            {sessionTerminated && (
+                <div className="absolute inset-0 z-[100] bg-[#020617]/95 backdrop-blur-3xl flex flex-col items-center justify-center p-6 animate-fade-in">
+                    <div className="w-16 h-16 bg-rose-500/10 rounded-3xl flex items-center justify-center text-rose-400 border border-rose-500/20 shadow-[0_0_30px_-5px_rgba(244,63,94,0.3)] mb-6">
+                        <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h2 className="text-2xl font-bold text-white mb-2 tracking-tight">Vault Terminated</h2>
+                    <p className="text-slate-400 text-center max-w-sm mb-8 font-light leading-relaxed">
+                        This secure session has been permanently closed and shredded. The encrypted tunnel no longer exists.
+                    </p>
+                    <button
+                        onClick={() => navigate('/')}
+                        className="px-8 py-3.5 bg-white/10 hover:bg-white/20 border border-white/10 rounded-2xl text-white font-medium transition-all shadow-lg"
+                    >
+                        Return to Dashboard
+                    </button>
+                </div>
+            )}
 
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden bg-[#020617]">
                 <div
@@ -499,61 +512,30 @@ export default function Chat() {
                 <div className="absolute inset-0 z-[100] flex flex-col bg-[#020617]/80 backdrop-blur-3xl animate-fade-in">
                     <div className="shrink-0 px-5 py-4 flex items-center justify-between border-b border-white/10 bg-black/20">
                         <h2 className="text-xl font-bold text-white tracking-wide">Select Theme</h2>
-                        <button
-                            onClick={() => setShowThemePicker(false)}
-                            className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 transition-colors"
-                            title="Close"
-                        >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                            </svg>
+                        <button onClick={() => setShowThemePicker(false)} className="p-2 bg-white/5 hover:bg-white/10 rounded-full text-slate-300 transition-colors" title="Close">
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                         </button>
                     </div>
-
                     <div className="shrink-0 border-b border-white/5 bg-black/20">
                         <div className="flex overflow-x-auto px-4 py-3 gap-2 sleek-scroll">
                             {['All', ...allTags].map(tag => (
-                                <button
-                                    key={tag}
-                                    onClick={() => setActiveTag(tag)}
-                                    className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 shadow-sm border ${activeTag === tag
-                                            ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]'
-                                            : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'
-                                        }`}
-                                >
+                                <button key={tag} onClick={() => setActiveTag(tag)} className={`px-4 py-1.5 rounded-full text-sm font-medium whitespace-nowrap transition-all duration-300 shadow-sm border ${activeTag === tag ? 'bg-white text-black border-white shadow-[0_0_15px_rgba(255,255,255,0.3)]' : 'bg-white/5 text-slate-300 border-white/10 hover:bg-white/10 hover:text-white'}`}>
                                     {tag.charAt(0).toUpperCase() + tag.slice(1)}
                                 </button>
                             ))}
                         </div>
                     </div>
-
                     <div className="flex-1 overflow-y-auto px-4 py-6 sleek-scroll">
                         <div className="w-full max-w-6xl mx-auto grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 pb-[max(2rem,env(safe-area-inset-bottom))]">
                             {filteredThemes.map(t => (
-                                <div
-                                    key={t.id}
-                                    onClick={() => changeTheme(t.id)}
-                                    className={`relative w-full aspect-[9/16] sm:aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer group shadow-xl transition-all duration-300 ${currentTheme === t.id
-                                            ? 'ring-2 ring-emerald-400 scale-[0.98]'
-                                            : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'
-                                        }`}
-                                >
-                                    <img
-                                        src={t.bg}
-                                        alt={t.name}
-                                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                                        loading="lazy"
-                                    />
+                                <div key={t.id} onClick={() => changeTheme(t.id)} className={`relative w-full aspect-[9/16] sm:aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer group shadow-xl transition-all duration-300 ${currentTheme === t.id ? 'ring-2 ring-emerald-400 scale-[0.98]' : 'ring-1 ring-white/10 hover:ring-white/30 hover:scale-[1.02]'}`}>
+                                    <img src={t.bg} alt={t.name} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy" />
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
-
                                     {currentTheme === t.id && (
                                         <div className="absolute top-2 right-2 bg-emerald-500 text-white p-1 rounded-full shadow-lg backdrop-blur-md">
-                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                            </svg>
+                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
                                         </div>
                                     )}
-
                                     <div className="absolute bottom-0 left-0 w-full p-3 flex flex-col gap-1.5">
                                         <span className="text-white text-sm font-semibold truncate drop-shadow-md">{t.name}</span>
                                         <div className={`h-1.5 w-full rounded-full bg-gradient-to-r ${t.bubbles} shadow-inner opacity-90`} />
@@ -567,26 +549,21 @@ export default function Chat() {
 
             <div className={`shrink-0 bg-black/30 border-b border-white/5 px-3 sm:px-6 py-3 sm:py-4 flex justify-between items-center z-20 backdrop-blur-md relative transition-all duration-300 ${isObfuscated ? 'blur-sm' : ''}`}>
                 <div className="flex items-center gap-2 sm:gap-4">
-                    <button
-                        onClick={() => navigate('/')}
-                        className="p-2 sm:px-3 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors flex items-center justify-center shrink-0"
-                        title="Back to Dashboard"
-                    >
-                        <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
+                    <button onClick={() => navigate('/')} className="p-2 sm:px-3 text-slate-400 hover:text-white bg-white/5 hover:bg-white/10 rounded-xl border border-white/10 transition-colors flex items-center justify-center shrink-0" title="Back to Dashboard">
+                        <svg className="w-5 h-5 sm:w-5 sm:h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                     </button>
-
                     <Logo className="w-7 h-7 sm:w-10 sm:h-10 drop-shadow-[0_0_10px_rgba(139,92,246,0.3)] shrink-0 hidden sm:block" />
-
                     <div className="min-w-0">
-                        <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">{vaultName}</h2>
+                        <div className="flex items-center gap-2">
+                            <h2 className="text-sm sm:text-lg font-semibold tracking-wide text-white leading-tight truncate">{vaultName}</h2>
+                            {vaultData?.room_type === 'group' && (
+                                <span className="bg-violet-500/20 text-violet-300 text-[10px] font-bold px-2 py-0.5 rounded-md border border-violet-500/30">GROUP</span>
+                            )}
+                        </div>
                         <div className="flex items-center gap-2 mt-0.5">
                             <div className="flex items-center text-[10px] sm:text-xs">
                                 <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mr-1.5 sm:mr-2 shadow-sm shrink-0 ${isConnected ? 'bg-emerald-400 shadow-emerald-400/50 animate-pulse' : 'bg-rose-400 shadow-rose-400/50'}`}></span>
-                                <span className="text-slate-400 font-light truncate">
-                                    {isConnected ? 'E2E Active' : 'Connecting...'}
-                                </span>
+                                <span className="text-slate-400 font-light truncate">{isConnected ? 'E2E Active' : 'Reconnecting...'}</span>
                             </div>
                             {vaultCreatedAt && (
                                 <>
@@ -599,56 +576,23 @@ export default function Chat() {
                 </div>
 
                 <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-                    <button
-                        onClick={() => setShowThemePicker(true)}
-                        className="transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm text-slate-300 hover:text-white flex items-center justify-center"
-                        title="Change Theme"
-                    >
-                        <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
-                        </svg>
+                    <button onClick={() => setShowThemePicker(true)} className="transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm text-slate-300 hover:text-white flex items-center justify-center" title="Change Theme">
+                        <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" /></svg>
                     </button>
-
-                    <button
-                        onClick={copyToClipboard}
-                        className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${copied
-                            ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400'
-                            : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'
-                            }`}
-                        title="Copy Invite Link"
-                    >
+                    <button onClick={copyToClipboard} className={`transition-all duration-300 p-2 sm:px-3 sm:py-2.5 border rounded-xl shadow-sm flex items-center justify-center ${copied ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400' : 'bg-white/5 hover:bg-white/10 border-white/10 text-slate-300 hover:text-white'}`} title="Copy Invite Link">
                         {copied ? (
-                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
                         ) : (
-                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                            </svg>
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
                         )}
                     </button>
-
                     {navigator.share && (
-                        <button
-                            onClick={shareLink}
-                            className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center"
-                            title="Share Invite Link"
-                        >
-                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                            </svg>
+                        <button onClick={shareLink} className="text-slate-300 hover:text-white transition-all duration-300 p-2 sm:px-3 sm:py-2.5 bg-white/5 hover:bg-white/10 border border-white/10 rounded-xl shadow-sm flex items-center justify-center" title="Share Invite Link">
+                            <svg className="w-4 h-4 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
                         </button>
                     )}
-
-                    <button
-                        onClick={leaveRoom}
-                        className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap ml-1"
-                        title="End Session"
-                    >
-                        <svg className="w-4 h-4 sm:w-4 sm:h-4 transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
+                    <button onClick={leaveRoom} className="group flex items-center justify-center gap-1.5 sm:gap-2 text-xs sm:text-sm text-rose-300 hover:text-rose-200 transition-all duration-300 p-2 sm:px-4 sm:py-2.5 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-500/40 rounded-xl shadow-[0_0_15px_-3px_rgba(244,63,94,0.15)] whitespace-nowrap ml-1" title="End Session">
+                        <svg className="w-4 h-4 sm:w-4 sm:h-4 transform group-hover:scale-110 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
                         <span className="hidden sm:inline">End & Shred</span>
                     </button>
                 </div>
@@ -666,11 +610,12 @@ export default function Chat() {
                     {messages.map((msg, idx) => {
                         const currentMsgDate = msg.timestamp ? new Date(msg.timestamp) : new Date();
                         const currentDateStr = currentMsgDate.toDateString();
-
                         const prevMsgDate = idx > 0 ? (messages[idx - 1].timestamp ? new Date(messages[idx - 1].timestamp) : new Date()) : null;
                         const prevDateStr = prevMsgDate ? prevMsgDate.toDateString() : null;
-
                         const showDivider = currentDateStr !== prevDateStr;
+
+                        const isSameSenderAsPrev = idx > 0 && messages[idx - 1].sender_id === msg.sender_id && !showDivider;
+                        const identity = !msg.isMine ? generateUserIdentity(msg.sender_id) : null;
 
                         return (
                             <div key={idx} className="flex flex-col w-full">
@@ -681,11 +626,30 @@ export default function Chat() {
                                         </span>
                                     </div>
                                 )}
-                                <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up`}>
-                                    <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 rounded-2xl text-[14px] sm:text-[15px] leading-relaxed relative group flex flex-col ${msg.isMine
-                                            ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white rounded-br-sm shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/20 backdrop-blur-xl`
-                                            : 'bg-[#ffffff0f] text-slate-100 rounded-bl-sm backdrop-blur-3xl shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/10'
+
+                                <div className={`flex ${msg.isMine ? 'justify-end' : 'justify-start'} animate-fade-in-up ${isSameSenderAsPrev ? 'mt-1' : 'mt-4'}`}>
+
+                                    {!msg.isMine && vaultData?.room_type === 'group' && (
+                                        <div className="flex items-end mr-2 shrink-0 pb-1 w-6">
+                                            {!isSameSenderAsPrev && (
+                                                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white shadow-md border border-white/20 ${identity.color}`}>
+                                                    {identity.initial}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    <div className={`max-w-[85%] sm:max-w-[65%] px-4 py-2.5 sm:px-5 sm:py-3.5 text-[14px] sm:text-[15px] leading-relaxed relative group flex flex-col ${msg.isMine
+                                        ? `bg-gradient-to-br ${CHAT_THEMES[currentTheme]?.bubbles || 'from-blue-600 to-violet-600'} text-white shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.4),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/20 backdrop-blur-xl rounded-2xl rounded-br-sm`
+                                        : 'bg-[#ffffff0f] text-slate-100 backdrop-blur-3xl shadow-[0_8px_30px_-4px_rgba(0,0,0,0.5),inset_0_2px_4px_rgba(255,255,255,0.1),inset_0_-4px_6px_rgba(0,0,0,0.2)] border border-white/10 rounded-2xl rounded-bl-sm'
                                         }`}>
+
+                                        {!msg.isMine && vaultData?.room_type === 'group' && !isSameSenderAsPrev && (
+                                            <span className="text-[10px] font-bold tracking-wide mb-1 opacity-70">
+                                                {identity.name}
+                                            </span>
+                                        )}
+
                                         <span className="break-words">{msg.content}</span>
 
                                         <div className={`text-[10px] mt-1.5 flex items-center justify-end gap-1 ${msg.isMine ? 'text-white/80' : 'text-slate-400'}`}>
@@ -694,9 +658,7 @@ export default function Chat() {
                                                     ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                                                     : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-
                                             {msg.isMine && <MessageStatus isRead={msg.isRead} />}
-
                                         </div>
                                     </div>
                                 </div>

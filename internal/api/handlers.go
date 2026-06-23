@@ -39,14 +39,15 @@ type Room struct {
 	ID               string     `bson:"_id"`
 	Name             string     `bson:"name"`
 	Theme            string     `bson:"theme"`
+	RoomType         string     `bson:"roomType"`
+	MaxCapacity      int        `bson:"maxCapacity"`
+	CurrentUsers     int        `bson:"currentUsers"`
 	SchemaVersion    int        `bson:"schemaVersion"`
 	CreatorSessionID string     `bson:"creatorSessionId"`
-	GuestSessionID   string     `bson:"guestSessionId"`
 	CreatedAt        time.Time  `bson:"createdAt"`
 	ExpiresAt        time.Time  `bson:"expiresAt"`
 	LastActiveAt     time.Time  `bson:"lastActiveAt"`
 	Terminated       bool       `bson:"terminated"`
-	IsLocked         bool       `bson:"isLocked"`
 	ReviewExpiresAt  *time.Time `bson:"reviewExpiresAt"`
 	Flagged          bool       `bson:"flagged"`
 	KeyVersion       int        `bson:"keyVersion"`
@@ -73,6 +74,7 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Name  string `json:"name"`
 		Theme string `json:"theme"`
+		Type  string `json:"type"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
@@ -92,10 +94,19 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 	if req.Theme == "" {
 		req.Theme = "aurora"
 	}
+	
+	roomType := req.Type
+	if roomType != "group" {
+		roomType = "private"
+	}
+
+	maxCapacity := 2
+	if roomType == "group" {
+		maxCapacity = 50
+	}
 
 	roomID := "room_" + generateSecureID(8)
 	creatorSessionID := "sess_" + generateSecureID(8)
-	guestSessionID := "sess_" + generateSecureID(8)
 	inviteID := "inv_" + generateSecureID(8)
 
 	now := time.Now()
@@ -105,14 +116,15 @@ func CreateRoomHandler(w http.ResponseWriter, r *http.Request) {
 		ID:               roomID,
 		Name:             req.Name,
 		Theme:            req.Theme,
+		RoomType:         roomType,
+		MaxCapacity:      maxCapacity,
+		CurrentUsers:     1,
 		SchemaVersion:    1,
 		CreatorSessionID: creatorSessionID,
-		GuestSessionID:   guestSessionID,
 		CreatedAt:        now,
 		ExpiresAt:        expiresAt,
 		LastActiveAt:     now,
 		Terminated:       false,
-		IsLocked:         false,
 		ReviewExpiresAt:  nil,
 		Flagged:          false,
 		KeyVersion:       1,
@@ -191,22 +203,27 @@ func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 
 	filter := map[string]interface{}{
 		"_id":        claims.RoomID,
-		"isLocked":   false,
 		"terminated": false,
+		"$expr": map[string]interface{}{
+			"$lt": []interface{}{"$currentUsers", "$maxCapacity"},
+		},
 	}
+	
 	update := map[string]interface{}{
-		"$set": map[string]interface{}{"isLocked": true},
+		"$inc": map[string]interface{}{"currentUsers": 1},
 	}
 
 	var room Room
 	err = database.RoomsCollection.FindOneAndUpdate(ctx, filter, update).Decode(&room)
 	if err != nil {
-		log.Printf("Join Error/Attempted double join for Room ID: %s", claims.RoomID)
-		http.Error(w, "Room not found, expired, or already secured by another user.", http.StatusForbidden)
+		log.Printf("Join Error/Capacity Reached for Room ID: %s", claims.RoomID)
+		http.Error(w, "Room is full, expired, or does not exist.", http.StatusForbidden)
 		return
 	}
 
-	guestToken, err := auth.GenerateSessionToken(room.ID, room.GuestSessionID, "guest", "1")
+	guestSessionID := "sess_" + generateSecureID(8)
+
+	guestToken, err := auth.GenerateSessionToken(room.ID, guestSessionID, "guest", "1")
 	if err != nil {
 		log.Printf("Join Error (Generate Guest Token): %v", err)
 		http.Error(w, "Failed to generate session token", http.StatusInternalServerError)
@@ -217,7 +234,7 @@ func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		"room_id":    room.ID,
 		"room_name":  room.Name,
 		"room_theme": room.Theme,
-		"session_id": room.GuestSessionID,
+		"session_id": guestSessionID,
 		"auth_token": guestToken,
 	}
 

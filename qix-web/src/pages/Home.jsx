@@ -13,6 +13,7 @@ export default function Home() {
     const [vaults, setVaults] = useState({});
 
     const [roomName, setRoomName] = useState('');
+    const [roomType, setRoomType] = useState('private');
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -28,7 +29,11 @@ export default function Home() {
             const response = await fetch(`${import.meta.env.VITE_API_URL}/room`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: roomName.trim(), theme: randomTheme })
+                body: JSON.stringify({
+                    name: roomName.trim(),
+                    theme: randomTheme,
+                    type: roomType
+                })
             });
 
             if (!response.ok) throw new Error('Failed to create room');
@@ -42,6 +47,7 @@ export default function Home() {
             saveVault(data.room_id, {
                 room_name: data.room_name,
                 room_theme: data.room_theme,
+                room_type: roomType,
                 invite_link: fullInviteLink,
                 e2e_key: exportedKey,
                 session_id: data.session_id,
@@ -178,12 +184,39 @@ export default function Home() {
                                     ))}
                                 </div>
 
+                                <div className="flex w-full bg-black/40 p-1 rounded-2xl border border-white/10 mb-3 mt-2 relative">
+                                    <div
+                                        className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white/10 border border-white/5 rounded-xl transition-transform duration-300 ease-out shadow-sm pointer-events-none"
+                                        style={{ transform: roomType === 'group' ? 'translateX(100%)' : 'translateX(0)' }}
+                                    />
+                                    <button
+                                        onClick={() => setRoomType('private')}
+                                        disabled={isLoading}
+                                        className={`flex-1 py-2.5 sm:py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors z-10 ${roomType === 'private' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        Private
+                                    </button>
+                                    <button
+                                        onClick={() => setRoomType('group')}
+                                        disabled={isLoading}
+                                        className={`flex-1 py-2.5 sm:py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors z-10 ${roomType === 'group' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Group
+                                    </button>
+                                </div>
+
                                 <input
                                     type="text"
                                     value={roomName}
                                     onChange={(e) => setRoomName(e.target.value)}
                                     placeholder="Name your vault (optional)..."
-                                    className="w-full bg-black/40 text-slate-200 placeholder:text-slate-500 px-6 py-4 mt-2 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 shadow-inner"
+                                    className="w-full bg-black/40 text-slate-200 placeholder:text-slate-500 px-6 py-4 rounded-2xl border border-white/10 focus:outline-none focus:border-violet-500/50 shadow-inner"
                                     disabled={isLoading}
                                     maxLength={30}
                                 />
@@ -203,6 +236,34 @@ export default function Home() {
                             </div>
                         ) : !inviteData ? (
                             <div className="flex flex-col items-center space-y-4 relative z-10 w-full">
+
+                                <div className="flex w-full bg-black/40 p-1 rounded-2xl border border-white/10 relative">
+                                    <div
+                                        className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white/10 border border-white/5 rounded-xl transition-transform duration-300 ease-out shadow-sm pointer-events-none"
+                                        style={{ transform: roomType === 'group' ? 'translateX(100%)' : 'translateX(0)' }}
+                                    />
+                                    <button
+                                        onClick={() => setRoomType('private')}
+                                        disabled={isLoading}
+                                        className={`flex-1 py-2.5 sm:py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors z-10 ${roomType === 'private' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                                        </svg>
+                                        Private
+                                    </button>
+                                    <button
+                                        onClick={() => setRoomType('group')}
+                                        disabled={isLoading}
+                                        className={`flex-1 py-2.5 sm:py-3 flex items-center justify-center gap-2 text-sm font-medium transition-colors z-10 ${roomType === 'group' ? 'text-white drop-shadow-md' : 'text-slate-500 hover:text-slate-300'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                        </svg>
+                                        Group
+                                    </button>
+                                </div>
+
                                 <input
                                     type="text"
                                     value={roomName}
