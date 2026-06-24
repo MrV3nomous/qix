@@ -136,10 +136,10 @@ export default function Home() {
                                 Total Privacy. Zero Friction.
                             </div>
                         </div>
-                        <h1 className="text-5xl sm:text-7xl font-bold text-white mb-6 tracking-tight leading-[1.1] drop-shadow-sm">
+                        <h1 className="text-3xl sm:text-5xl font-bold text-white mb-6 tracking-tight leading-[1.1] drop-shadow-sm">
                             Speak freely. <br className="hidden sm:block" /> Leave no digital trail.
                         </h1>
-                        <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed font-light mb-12">
+                        <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed font-light mb-6">
                             Discuss sensitive deals, share confidential information, or talk privately. Send a secure link, and with one click, the entire conversation is permanently erased from existence.
                         </p>
                     </div>

@@ -23,9 +23,9 @@ export default function About() {
                 <div className="space-y-6 text-sm sm:text-base font-light leading-relaxed">
                     <p className="text-lg text-slate-200 font-medium">Privacy shouldn't require an installation file or an account signup.</p>
 
-                    <p>Qix was conceived out of a fundamental engineering question: *Why does modern digital privacy feel so heavy?* Most secure messaging utilities require you to supply a verified mobile phone number, hand over your biological contact book, download a heavy desktop client, or sign away metadata trails to persistent servers.</p>
+                    <p>Qix was conceived out of a fundamental engineering question: Why does modern digital privacy feel so heavy? Most secure messaging utilities require you to supply a verified mobile phone number, hand over your biological contact book, download a heavy desktop client, or sign away metadata trails to persistent servers.</p>
 
-                    <p>Qix is architected as an alternative: **an instantaneous, 100% web-native, zero-knowledge communication node.** It is built to facilitate absolute transactional conversations—delicate business arrangements, security keys handoffs, legal counseling, or true confidential exchanges—with completely zero digital footprint left behind.</p>
+                    <p>Qix is architected as an alternative: an instantaneous, 100% web-native, zero-knowledge communication node. It is built to facilitate absolute transactional conversations—delicate business arrangements, security keys handoffs, legal counseling, or true confidential exchanges—with completely zero digital footprint left behind.</p>
 
                     <h2 className="text-lg font-semibold text-white mt-8 mb-2">Our Architecture Blueprint:</h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
