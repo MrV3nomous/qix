@@ -1,7 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
 import Join from './pages/Join';
-import Chat from './pages/Chat';
+import Chat from './pages/Chat'; 
+import Terms from './pages/Terms';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import About from './pages/About';
+import Contact from './pages/Contact';
 
 function App() {
   return (
