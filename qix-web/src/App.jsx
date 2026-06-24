@@ -11,6 +11,10 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/join" element={<Join />} />
           <Route path="/chat/:roomId" element={<Chat />} />
+          <Route path="/terms" element={<Terms />} />
+          <Route path="/privacy" element={<PrivacyPolicy />} />
+          <Route path="/about" element={<About />} />
+          <Route path="/contact" element={<Contact />} />
         </Routes>
       </div>
     </BrowserRouter>
