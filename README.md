@@ -23,6 +23,10 @@ A zero-knowledge, end-to-end encrypted, web-native ephemeral communication platf
 
 Qix operates differently. It is an instantaneous, 100% web-native, zero-knowledge communication node designed for absolute transactional conversations—delicate business arrangements, security key handoffs, or confidential exchanges—leaving **zero digital footprint**.
 
+
+## Test Qix today:
+> https://qix-six.vercel.app/
+
 ## 🚀 Core Features
 
 *   **Zero-Knowledge Architecture:** Cryptographic keys are generated locally via the Web Crypto API. The server never receives, parses, or logs plaintext keys or payloads.
@@ -120,31 +124,16 @@ use qix
 db.rooms.createIndex( { "lastActiveAt": 1 }, { expireAfterSeconds: 172800 } )
 ```
 
-📂 Project Structure
-Plaintext
-qix/
-├── client/                 # React Vite Frontend
-│   ├── src/
-│   │   ├── components/     # Reusable UI elements
-│   │   ├── pages/          # Routing views (Home, Chat, Legal)
-│   │   └── utils/          # Web Crypto API logic & Vault Managers
-├── server/                 # Go Backend
-│   ├── internal/
-│   │   ├── api/            # REST HTTP Handlers
-│   │   ├── auth/           # JWT Generation & Validation
-│   │   ├── chat/           # WebSocket Upgraders & Global Hub
-│   │   └── database/       # MongoDB & Redis Initialization
-│   └── main.go             # Server Entrypoint
-└── scripts/
-    └── shredder.py         # Python Orphaned Data Sweeper
-
 ---
-    
+
+
 ⚖️ Legal & Disclaimer
+
 Qix is an open-source project created for educational and portfolio demonstration purposes. The operator explicitly disclaims all liability regarding data loss, cryptographic compromise, or misuse. By deploying or utilizing this software, you agree to the strict terms outlined in the Terms of Service.
 
 ---
 
 👨‍💻 About the Developer
+
 Built by Soumik Halder.
 Portfolio: https://soumikhalder.vercel.app/
