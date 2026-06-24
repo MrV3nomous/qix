@@ -143,5 +143,4 @@ Qix is an open-source project created for educational and portfolio demonstratio
 
 👨‍💻 About the Developer
 
-Built by Soumik Halder.
-Portfolio: https://soumikhalder.vercel.app/
+Built and Licensed by Soumik Halder.
