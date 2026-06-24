@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import Logo from '../components/Logo';
 import { generateKey, exportKey } from '../utils/crypto';
 import { getAllVaults, saveVault, destroyAllVaults, destroyVault } from '../utils/vaultManager';
@@ -223,13 +223,18 @@ export default function Home() {
                                 <button
                                     onClick={createRoom}
                                     disabled={isLoading}
-                                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-2xl shadow-lg transition-all duration-300 flex items-center justify-center gap-2"
+                                    className="w-full py-4 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-2xl shadow-lg transition-all duration-300 flex items-center justify-center gap-2 mt-2"
                                 >
                                     {isLoading ? 'Creating...' : '+ Create Another Vault'}
                                 </button>
+
+                                <p className="text-[10px] sm:text-xs text-slate-500 font-light mt-1 text-center w-full">
+                                    By clicking create, you agree to our <Link to="/terms" className="underline hover:text-slate-300">Terms</Link> and <Link to="/privacy" className="underline hover:text-slate-300">Privacy Policy</Link>.
+                                </p>
+
                                 <button
                                     onClick={() => { destroyAllVaults(); setVaults({}); }}
-                                    className="w-full py-3 px-8 bg-transparent text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-900/50 rounded-2xl text-sm font-medium transition-all duration-300"
+                                    className="w-full py-3 px-8 bg-transparent text-slate-400 hover:text-rose-400 border border-slate-800 hover:border-rose-900/50 rounded-2xl text-sm font-medium transition-all duration-300 mt-2"
                                 >
                                     Shred All Sessions
                                 </button>
@@ -237,7 +242,7 @@ export default function Home() {
                         ) : !inviteData ? (
                             <div className="flex flex-col items-center space-y-4 relative z-10 w-full">
 
-                                <div className="flex w-full bg-black/40 p-1 rounded-2xl border border-white/10 relative">
+                                <div className="flex w-full bg-black/40 p-1 rounded-2xl border border-white/10 relative mb-1">
                                     <div
                                         className="absolute top-1 bottom-1 w-[calc(50%-4px)] bg-white/10 border border-white/5 rounded-xl transition-transform duration-300 ease-out shadow-sm pointer-events-none"
                                         style={{ transform: roomType === 'group' ? 'translateX(100%)' : 'translateX(0)' }}
@@ -276,11 +281,16 @@ export default function Home() {
                                 <button
                                     onClick={createRoom}
                                     disabled={isLoading}
-                                    className="w-full py-5 px-8 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-2xl text-lg shadow-[0_0_40px_-10px_rgba(124,58,237,0.5)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 flex items-center justify-center gap-3"
+                                    className="w-full py-5 px-8 bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white font-medium rounded-2xl text-lg shadow-[0_0_40px_-10px_rgba(124,58,237,0.5)] transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-50 flex items-center justify-center gap-3 mt-2"
                                 >
                                     {isLoading ? 'Creating secure connection...' : 'Start a Secure Conversation'}
                                 </button>
-                                <p className="text-sm text-slate-400/80 font-light mt-2">No signup. No app to download. 100% anonymous.</p>
+
+                                <p className="text-[10px] sm:text-xs text-slate-500 font-light mt-1 text-center w-full">
+                                    By clicking create, you agree to our <Link to="/terms" className="underline hover:text-slate-300">Terms</Link> and <Link to="/privacy" className="underline hover:text-slate-300">Privacy Policy</Link>.
+                                </p>
+
+                                <p className="text-sm text-slate-400/80 font-light mt-3">No signup. No app to download. 100% anonymous.</p>
                             </div>
                         ) : (
                             <div className="space-y-6 animate-fade-in-up relative z-10">
@@ -392,8 +402,14 @@ export default function Home() {
                     </div>
                 </div>
 
-                <footer className="w-full shrink-0 border-t border-white/5 py-8 text-center bg-black/60 backdrop-blur-lg relative z-10">
+                <footer className="w-full shrink-0 border-t border-white/5 py-8 sm:py-12 bg-black/60 backdrop-blur-lg relative z-10 flex flex-col items-center justify-center gap-6">
                     <p className="text-slate-500 text-sm font-light">Qix. Designed for conversations that belong only to you.</p>
+                    <div className="flex flex-wrap justify-center gap-4 sm:gap-8 text-xs font-medium text-slate-500">
+                        <Link to="/about" className="hover:text-white transition-colors">About</Link>
+                        <Link to="/contact" className="hover:text-white transition-colors">Contact</Link>
+                        <Link to="/privacy" className="hover:text-white transition-colors">Privacy Policy</Link>
+                        <Link to="/terms" className="hover:text-white transition-colors">Terms of Service</Link>
+                    </div>
                 </footer>
             </div>
         </div>

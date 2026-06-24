@@ -99,6 +99,10 @@ export default function Join() {
                                     <div className="absolute w-full h-full border-4 border-violet-500 rounded-full border-t-transparent animate-spin"></div>
                                 </div>
                                 <p className="text-slate-400 font-light text-sm">{status}</p>
+
+                                <p className="text-[10px] sm:text-xs text-slate-500 font-light mt-4 px-2">
+                                    By joining this vault, you agree to our <Link to="/terms" className="underline hover:text-slate-300">Terms of Service</Link> and <Link to="/privacy" className="underline hover:text-slate-300">Privacy Policy</Link>.
+                                </p>
                             </div>
                         ) : (
                             <div className="flex flex-col items-center space-y-6 animate-fade-in">
