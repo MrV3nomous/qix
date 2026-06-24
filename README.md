@@ -24,8 +24,10 @@ A zero-knowledge, end-to-end encrypted, web-native ephemeral communication platf
 Qix operates differently. It is an instantaneous, 100% web-native, zero-knowledge communication node designed for absolute transactional conversations—delicate business arrangements, security key handoffs, or confidential exchanges—leaving **zero digital footprint**.
 
 
-## Test Qix today:
-> https://qix-six.vercel.app/
+**Test Qix today:**
+https://qix-six.vercel.app/
+
+---
 
 ## 🚀 Core Features
 
@@ -35,6 +37,8 @@ Qix operates differently. It is an instantaneous, 100% web-native, zero-knowledg
 *   **Private & Group Vaults:** Dynamically scale from 1-on-1 private tunnels to multi-user group chat vaults with automatically assigned agent aliases.
 *   **Real-Time WebSockets:** Low-latency, bidirectional communication using a hardened Go WebSocket hub.
 *   **Automated Garbage Collection:** A custom Python daemon (`shredder.py`) aggressively sweeps the database for orphaned packets, ensuring absolute data sanitation.
+
+---
 
 ## 🧠 Cryptographic Threat Model
 
@@ -47,6 +51,8 @@ Qix routes obfuscated binary payloads. Here is how the encryption pipeline prote
 5.  **Local Decryption:** The recipient's browser uses the hash key to decrypt the incoming ciphertext back into plaintext. 
 
 If a link is lost, the data becomes mathematically unrecoverable. 
+
+---
 
 ## 🛠️ Tech Stack
 
@@ -65,6 +71,8 @@ If a link is lost, the data becomes mathematically unrecoverable.
 **Database & Infrastructure**
 *   **MongoDB Atlas:** Persistent data store utilizing strict TTL (Time-To-Live) indexes for automated data shredding.
 *   **Python:** Dedicated background daemon for orphaned data garbage collection.
+
+---
 
 ## ⚙️ Local Development Setup
 
