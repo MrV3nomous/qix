@@ -115,6 +115,14 @@ export default function Home() {
 
     return (
         <div className="min-h-[100dvh] w-full flex flex-col bg-[#020617] text-slate-200 font-sans relative selection:bg-violet-500/30 overflow-y-auto overflow-x-hidden">
+            <style>{`
+                .sleek-scroll::-webkit-scrollbar { width: 3px; height: 3px; }
+                .sleek-scroll::-webkit-scrollbar-track { background: transparent; }
+                .sleek-scroll::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
+                .sleek-scroll::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.2); }
+                .sleek-scroll { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.1) transparent; }
+            `}</style>
+
             <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
                 <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-violet-600/20 rounded-full mix-blend-screen filter blur-[120px] animate-pulse duration-1000"></div>
                 <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-fuchsia-600/10 rounded-full mix-blend-screen filter blur-[120px]"></div>
@@ -154,34 +162,42 @@ export default function Home() {
                                     <p className="text-sm font-light">You have {activeVaultKeys.length} secure session(s) open.</p>
                                 </div>
 
-                                <div className="w-full space-y-3 max-h-[40vh] overflow-y-auto scrollbar-hide pb-2">
-                                    {activeVaultKeys.map(id => (
-                                        <div key={id} className="bg-white/5 border border-white/10 p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0">
-                                            <div className="flex flex-col text-left w-full sm:w-auto">
-                                                <span className="text-sm font-semibold text-white truncate w-full sm:w-32">{vaults[id].room_name || 'Secure Vault'}</span>
-                                                <span className="text-[10px] text-slate-500 font-sans mt-0.5">{formatVaultDate(vaults[id].createdAt)}</span>
-                                            </div>
-                                            <div className="flex gap-2 w-full sm:w-auto justify-end">
-                                                <button onClick={() => copyVaultLink(vaults[id].invite_link, id)} className="p-2 sm:px-3 sm:py-2 bg-white/5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shadow-sm flex items-center justify-center" title="Copy Link">
-                                                    {copiedVaultId === id ? (
-                                                        <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
-                                                    ) : (
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                                                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                                                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-                                                        </svg>
-                                                    )}
-                                                </button>
-                                                {navigator.share && (
-                                                    <button onClick={() => shareVaultLink(vaults[id].invite_link)} className="p-2 sm:px-3 sm:py-2 bg-white/5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shadow-sm flex items-center justify-center" title="Share Link">
-                                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                <div className="w-full space-y-3 max-h-[40vh] overflow-y-auto sleek-scroll pb-2 pr-1">
+                                    {activeVaultKeys.map(id => {
+                                        const isGroup = vaults[id].room_type === 'group';
+                                        return (
+                                            <div key={id} className={`${isGroup ? 'bg-violet-500/10 border-violet-500/20' : 'bg-blue-500/10 border-blue-500/20'} border p-3 sm:p-4 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-0 transition-colors`}>
+                                                <div className="flex flex-col text-left w-full sm:w-auto">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className="text-sm font-semibold text-white truncate max-w-[150px] sm:max-w-[200px]">{vaults[id].room_name || 'Secure Vault'}</span>
+                                                        {isGroup && (
+                                                            <span className="bg-violet-500/20 text-violet-300 text-[9px] font-bold px-1.5 py-0.5 rounded-md border border-violet-500/30">GROUP</span>
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] text-slate-500 font-sans mt-0.5">{formatVaultDate(vaults[id].createdAt)}</span>
+                                                </div>
+                                                <div className="flex gap-2 w-full sm:w-auto justify-end">
+                                                    <button onClick={() => copyVaultLink(vaults[id].invite_link, id)} className="p-2 sm:px-3 sm:py-2 bg-white/5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shadow-sm flex items-center justify-center" title="Copy Link">
+                                                        {copiedVaultId === id ? (
+                                                            <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>
+                                                        ) : (
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                                                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                                                            </svg>
+                                                        )}
                                                     </button>
-                                                )}
-                                                <button onClick={() => navigate(`/chat/${id}`)} className="px-4 py-2 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-xl hover:bg-emerald-500/30 transition-colors shadow-sm">Enter</button>
-                                                <button onClick={() => { destroyVault(id); setVaults(getAllVaults()); }} className="px-4 py-2 bg-rose-500/10 text-rose-400 text-xs font-medium rounded-xl hover:bg-rose-500/20 transition-colors shadow-sm">Shred</button>
+                                                    {navigator.share && (
+                                                        <button onClick={() => shareVaultLink(vaults[id].invite_link)} className="p-2 sm:px-3 sm:py-2 bg-white/5 text-slate-300 hover:text-white rounded-xl hover:bg-white/10 transition-colors shadow-sm flex items-center justify-center" title="Share Link">
+                                                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"></path></svg>
+                                                        </button>
+                                                    )}
+                                                    <button onClick={() => navigate(`/chat/${id}`)} className="px-4 py-2 bg-emerald-500/20 text-emerald-400 text-xs font-medium rounded-xl hover:bg-emerald-500/30 transition-colors shadow-sm">Enter</button>
+                                                    <button onClick={() => { destroyVault(id); setVaults(getAllVaults()); }} className="px-4 py-2 bg-rose-500/10 text-rose-400 text-xs font-medium rounded-xl hover:bg-rose-500/20 transition-colors shadow-sm">Shred</button>
+                                                </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
 
                                 <div className="flex w-full bg-black/40 p-1 rounded-2xl border border-white/10 mb-3 mt-2 relative">
