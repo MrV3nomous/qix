@@ -76,7 +76,7 @@ export default function Chat() {
         : Object.values(CHAT_THEMES).filter(t => t.tags?.includes(activeTag));
 
     const generateUserIdentity = (senderId) => {
-        if (!senderId) return { name: 'Unknown', color: 'bg-slate-600' };
+        if (!senderId) return { name: 'Unknown', color: 'bg-slate-600', initial: '?' };
 
         const colors = [
             'bg-rose-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500',

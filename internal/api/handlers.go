@@ -234,6 +234,7 @@ func JoinRoomHandler(w http.ResponseWriter, r *http.Request) {
 		"room_id":    room.ID,
 		"room_name":  room.Name,
 		"room_theme": room.Theme,
+		"room_type":  room.RoomType,
 		"session_id": guestSessionID,
 		"auth_token": guestToken,
 	}
