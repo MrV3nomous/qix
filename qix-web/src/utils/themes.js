@@ -77,7 +77,7 @@ export const CHAT_THEMES = {
     plane_clouds: { id: 'plane_clouds', name: 'Crimson Skies', bg: '/themes/images/aeroplaneblueredclouds.webp', bubbles: 'from-rose-500 to-red-800', tags: ['sky', 'travel', 'colorful'] },
     plane_sky: { id: 'plane_sky', name: 'Clear Skies', bg: '/themes/images/aeroplaneinthesky.webp', bubbles: 'from-sky-400 to-blue-700', tags: ['sky', 'travel', 'daylight'] },
     plane_towers: { id: 'plane_towers', name: 'City Flight', bg: '/themes/images/aeroplanetowerscenter.webp', bubbles: 'from-slate-400 to-slate-700', tags: ['sky', 'travel', 'urban'] },
-    towers_sky: { id: 'towers_sky', name: 'Tower Flight', bg: '/themes/images/towerskyplane.webp', bubbles: 'from-cyan-500 to-blue-800', tags: ['sky', 'travel', 'urban'] },
+    towers_sky: { id: 'towers_sky', name: 'Tower Flight', bg: '/themes/images/towersskyplane.webp', bubbles: 'from-cyan-500 to-blue-800', tags: ['sky', 'travel', 'urban'] },
     aeroplane_sky_mono: { id: 'aeroplane_sky_mono', name: 'Aviation Noir', bg: '/themes/images/aeroplaneskytowermonochrome.webp', bubbles: 'from-gray-500 to-gray-800', tags: ['sky', 'monochrome', 'travel'] },
 
     
